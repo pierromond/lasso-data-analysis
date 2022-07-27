@@ -1,0 +1,13 @@
+name: Rapport
+title: Rapport
+username:
+account: rustedpanda
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 6562517
+bundleId: 6050693
+url: https://rustedpanda.shinyapps.io/Rapport/
+when: 1656424005.11095
+lastSyncTime: 1656424005.11095
+asMultiple: FALSE
+asStatic: FALSE

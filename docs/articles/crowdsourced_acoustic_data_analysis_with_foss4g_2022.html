@@ -53,7 +53,46 @@
       <a href="../articles/crowdsourced_acoustic_data_analysis_with_foss4g_2022.html">Crowdsourced acoustic open data analysis with FOSS4G tools</a>
     </li>
     <li>
+      <a href="../articles/LM_temporal_analysis_article.html">Rapport de stage</a>
+    </li>
+    <li>
+      <a href="../articles/Main_doc.html">Full report</a>
+    </li>
+    <li>
       <a href="../articles/temporal_exploratory_analysis.html">Temporal exploratory analysis</a>
+    </li>
+    <li>
+      <a href="../articles/%5BAnalysis%5DDatabase_overview.html">Database overview</a>
+    </li>
+    <li>
+      <a href="../articles/%5BAnalysis%5DHourly_tag_repartition.html">Time distribution analysis</a>
+    </li>
+    <li>
+      <a href="../articles/%5BAnalysis%5DTags_around_sunrise.html">Sunrise analysis</a>
+    </li>
+    <li>
+      <a href="../articles/%5BAnalysis%5DTags_around_sunset.html">Sunset analysis</a>
+    </li>
+    <li>
+      <a href="../articles/%5BAnalysis%5DTemporal_attributes.html">Temporal attributes analysis</a>
+    </li>
+    <li>
+      <a href="../articles/%5BAnalysis%5DWeather_analysis.html">Weather analaysis</a>
+    </li>
+    <li>
+      <a href="../articles/%5BComputing%5DAdding_temporal_data.html">Adding temporal attributes</a>
+    </li>
+    <li>
+      <a href="../articles/%5BComputing%5DAdding_weather.html">Adding weather data</a>
+    </li>
+    <li>
+      <a href="../articles/%5BComputing%5DCalculate_components.html">Adding temporal data</a>
+    </li>
+    <li>
+      <a href="../articles/%5BComputing%5DData_cleaning.html">Data cleaning</a>
+    </li>
+    <li>
+      <a href="../articles/%5BComputing%5DSpatial_components.html">Internship report</a>
     </li>
   </ul>
 </li>
@@ -75,7 +114,7 @@
                         <h4 data-toc-skip class="author">Nicolas Roelandt<sup>1</sup>, Pierre Aumond<sup>2</sup>, Ludovic Moisan<sup>2</sup>
 </h4>
             
-            <h4 data-toc-skip class="date">2022-05-13</h4>
+            <h4 data-toc-skip class="date">2022-06-13</h4>
       
       
       <div class="hidden name"><code>crowdsourced_acoustic_data_analysis_with_foss4g_2022.Rmd</code></div>
@@ -213,47 +252,66 @@ sites (Nantes, Lyon, Paris) and Git is already used within the UMRAE laboratory.
 <span class="header-section-number">1.1.3</span> Implementation<a class="anchor" aria-label="anchor" href="#implementation"></a>
 </h4>
 <p>The data are provided in the form of a PostGreSQL/PostGIS dump.
-A server has been set up accordingly to the documentation provided and the data loaded.<br>
-A materialized view was created in order to provide a stable access to the data
-corresponding to the defined criteria.</p>
-<p>These criteria are both attributive and spatial.
-We removed from the analysis the tracks taggued <em>test</em> or <em>indoor</em> as we wanted outdoor recording.
-Short tracks (duration less than 5 seconds) and long tracks (duration longer than 15 minutes)
-have been removed.
-We kept the tracks where the GPS median accuracy was less than 20 meters.
-We decided to keep tracks that are comprised in a rather small area,
-the bounding box area of the track should be less than 625 square meters which
-corresponds to a square of 25 by 25 meters.</p>
-<p>To extract data regarding France area, we pre-filtered the data
-using the NaturalEarth dataset to keep tracks that are within the France country.
-This spatial filtering was implemented by creating a materialized view within the
-PostGIS database.
-The materialized view is a good compromise between a table and a view because it
+A server has been set up accordingly to the documentation provided to store the data.<br>
+Several materialized views were created in order to provide stable access to data
+corresponding to defined criteria.
+A materialized view is a good compromise between a table and a view because it
 has similar response time to a table and also allows us to recompute
 values easily if the threshold values changed.</p>
+<p>The analyses were carried out in two stages: a first exploratory analysis aimed
+at verifying whether certain known environmental dynamics could be visible in the
+data set, on the territory of metropolitan France.
+This first analysis having brought encouraging results, we took it again in order
+to refine it and to extend the field of research.
+Asking new question or extanding the analysis worldwide.
+We will present some of this results here.</p>
+<p>The code producing the analysis and graphics are separated in
+several complementary documents<a href="#fn5" class="footnote-ref" id="fnref5"><sup>5</sup></a>.</p>
+<p>The selection criteria for the data we were going to use for our analyses were
+both attributive and spatial.
+We removed from the analysis the tracks tagged <em>test</em> or <em>indoor</em> as we wanted
+only outdoor recording.
+Short tracks (duration less than 5 seconds) were discarded.
+Long tracks (duration longer than 15 minutes) have been removed from the exploratory analysis.
+They were kept in the extended analysis.</p>
+<p>In the exploratory analysis, we kept the tracks where the GPS median accuracy was
+less than 20 meters.
+In the extended analysis, we kept the tracks but discarded points with a GPS median
+accuracy greater than 20 meters from the tracks.</p>
+<!-- NOTE: toujours d'actualité dans l'analyse de Ludovic ?-->
+<p>We decided to keep tracks that are comprised in a rather small area,
+the bounding box area of the track should be less than 625 square meters which
+corresponds to a square of 25 by 25 meters.</p>
+<p>To extract data regarding France metropolitan area, we pre-filtered the data
+using the NaturalEarth dataset to keep tracks that are within the France country.
+This spatial filtering was implemented by creating a materialized view within the
+PostGIS database.</p>
 <p>NaturalEarth is a great dataset and is well known worldwide however it does not
 distinguish France metropolitan area from overseas areas.
-This could have introduce complications with timezone handling.</p>
-<p>Plus we wanted to be able see if seasons have distinct dynamics.
-Metropolitan France has a temperate climate <span class="citation">(<a href="#ref-ClimatFranceMetropolitaine" role="doc-biblioref">Météo-France 2020a</a>)</span>
+This could have introduce complications with timezone handling.
+We refined the spatial filtering to France’s metropolitan area
+using an authoritative dataset <span class="citation">(<a href="#ref-institutgeographiquenationalAdminExpress" role="doc-biblioref">Institut Géographique National 2021</a>)</span>.</p>
+<!--
+Plus we wanted to be able see if seasons have distinct dynamics.
+Metropolitan France has a temperate climate [@ClimatFranceMetropolitaine] 
 where the climate in the West Indies, Reunion, New Caledonia and Polynesia is of
-the tropical maritime type <span class="citation">(<a href="#ref-ClimatsOutremerMeteoFrance" role="doc-biblioref">Météo-France 2020b</a>)</span>.
-That motivated our need to separate overseas records from metropolitan ones</p>
+the tropical maritime type [@ClimatsOutremerMeteoFrance].
+That motivated our need to separate overseas records from metropolitan ones
+-->
 <p>In order to facilitate the replication of the study on areas without this kind
 of issues, this as not been done within the database but at the beginning of the
-Rmarkdown document where analysis is conducted.</p>
-<p>The code producing the analysis and the graphics presented here are separated in
-several complementary documents<a href="#fn5" class="footnote-ref" id="fnref5"><sup>5</sup></a>.</p>
+Rmarkdown document where the exploratory analysis is conducted.</p>
 <p>The Rmarkdown document establishes the connection with the materialized view and then
 performs the operations allowing to finalize data preparation and analyze the data.
-It is a document mixing narrative, figures and code (in R but also several programming languages).</p>
-<p>In this document, we refine the spatial filtering to France’s metropolitan area
-using an authoritative dataset <span class="citation">(<a href="#ref-institutgeographiquenationalAdminExpress" role="doc-biblioref">Institut Géographique National 2021</a>)</span>.
-We also transform the track timestamp to local time and compute seasons using the R packages
-<code>lubridate</code> from the <code>tidyverse</code> metapackage <span class="citation">(<a href="#ref-wickhamWelcomeTidyverse2019" role="doc-biblioref">Wickham et al. 2019</a>)</span> and
-<code>hydroTSM</code> <span class="citation">(<a href="#ref-mauriciozambrano-bigiariniHydroTSMTimeSeries2020" role="doc-biblioref">Mauricio Zambrano-Bigiarini 2020</a>)</span>.</p>
-<p>We also used the <code>suncalc</code> package (<span class="citation"><a href="#ref-thieurmelSuncalcComputeSun2019" role="doc-biblioref">Thieurmel and Elmarhraoui</a> (<a href="#ref-thieurmelSuncalcComputeSun2019" role="doc-biblioref">2019</a>)</span>) to compute
-the sunrise time of the day of the track at its location.</p>
+It is a document mixing narrative, figures and code (mostly in R but also several programming languages).</p>
+<!-- Package list is much more longer than that with the extended analysis
+We also transform the track timestamp to local time and compute seasons using the R packages 
+`lubridate` from the `tidyverse` metapackage [@wickhamWelcomeTidyverse2019] and 
+`hydroTSM` [@mauriciozambrano-bigiariniHydroTSMTimeSeries2020].
+
+We also used the `suncalc` package (@thieurmelSuncalcComputeSun2019) to compute 
+the sunrise time of the day of the track at its location.
+-->
 </div>
 </div>
 </div>
@@ -282,8 +340,8 @@ tag as shown in Figure 1.
 <h4 id="acoustic-dynamics-of-bird-song-and-commutes">
 <span class="header-section-number">2.1.1</span> Acoustic dynamics of bird song and commutes<a class="anchor" aria-label="anchor" href="#acoustic-dynamics-of-bird-song-and-commutes"></a>
 </h4>
-<p>A first axis of analysis concerns the time distribution of the tags.
-Figure 2 shows that animal noises
+<p>A first axis of analysis concerns the time distribution of the tags.</p>
+<p>Figure 2 shows that animal noises
 (tag <em>animals</em>) are more frequent in the morning and especially
 at sunrise time.
 This is a well known dynamic for bird song <span class="citation">(<a href="#ref-robbins1981effect" role="doc-biblioref">Robbins 1981</a>)</span>
@@ -298,9 +356,9 @@ Figure 3).</p>
 <p class="caption">
 <strong>Figure 3: </strong>Road dynamics.
 </p>
-<p>We observe a two-hour difference from commuting times shown by <span class="citation"><a href="#ref-MA2017135" role="doc-biblioref">Ma et al.</a> (<a href="#ref-MA2017135" role="doc-biblioref">2017</a>)</span>.</p>
+<p>We observe a two-hour difference from commuting times shown by <span class="citation">Ma et al. (<a href="#ref-MA2017135" role="doc-biblioref">2017</a>)</span>.</p>
 <p>Figure 3 peak times are 9:00 AM–10:00 AM
-and 8:00 PM–9:00 PM where <span class="citation"><a href="#ref-MA2017135" role="doc-biblioref">Ma et al.</a> (<a href="#ref-MA2017135" role="doc-biblioref">2017</a>)</span> peak times are 7:00 AM–9:00 AM and 5:00 PM–7:00 PM.
+and 8:00 PM–9:00 PM where <span class="citation">Ma et al. (<a href="#ref-MA2017135" role="doc-biblioref">2017</a>)</span> peak times are 7:00 AM–9:00 AM and 5:00 PM–7:00 PM.
 This time lag may be due to several reasons that we did not explore: cultural difference between China and France, different mobility practices (smart card for public transportation data versus road noise data), different types of study area (Beijing metropolis and metropolitan France).</p>
 <p>Seeing those dynamics was a good sign regarding the validity of crowdsourced
 environmental acoustic data.
@@ -315,7 +373,26 @@ events in an authoritative database.</p>
 <p>As we know the user position and we have the time stamp of the recording, we are
 able to determine the weather conditions at that time and place using the services
 of Météo-France, the French national meteorological service.</p>
-<!--TODO: Introduire les graphes et le texte de Ludovic -->
+<p>In order to determine the accuracy of the manually selected tags by the users of the NoiseCapture app, we want to proceed simple investigations concerning some tags that concern physical events, such as the weather related ones (rain,wind), which can be verified later on.</p>
+<p>The weather data used is from France’s national weather organisation Météo-France, available along with its full documentation from their website :
+<a href="https://donneespubliques.meteofrance.fr/?fond=produit&amp;id_produit=90&amp;id_rubrique=32" class="external-link">French weather data</a></p>
+<p>It is to keep in mind that the weather data available to us via this method is limited to the one measured at weather stations. We coded a function getting the weather observed at the closest station. The median distance between stations and our tracks is <strong>16.1 kilometers</strong>, resulting in a small margin of error, the weather being susceptible to change on such a distance.</p>
+<div class="figure">
+<span style="display:block;" id="fig:rain-tag-use"></span>
+<img src="plots/rain_repartition.png" alt="Rain tag use" width="1358"><p class="caption">
+Figure 2.1: Rain tag use
+</p>
+</div>
+<div class="figure">
+<span style="display:block;" id="fig:wind-tag-use"></span>
+<img src="plots/wind_repartition.png" alt="Wind tag use" width="1358"><p class="caption">
+Figure 2.2: Wind tag use
+</p>
+</div>
+<p>The proportion of “wind” and “rain” tags seem to correlate with their corresponding physical events.
+In order to create those graphs, we selected scales to group our data (wind force and precipitation) and calculate the proportion of tags present in those groups. We tried to create groups of equal representation for our data, but our data being non-uniform and disparate, some of our groups of data are much less populated than others, creating a potential bias that could only be corrected by the aggregation of more participator’s data. This issue also explains why there is such a large confidence zone of potential linear regression on figure <a href="#fig:rain-tag-use">2.1</a>.</p>
+<p><strong>The correlation coefficient between rain tags and the amount of rain is estimated at 0.5 with a p-value of 0.391.</strong></p>
+<p><strong>The correlation coefficient between wind tags and the strength of rain is estimated at 0.93 with a p-value close to zero.</strong></p>
 </div>
 </div>
 <div class="section level3" number="2.2">
@@ -343,7 +420,7 @@ relationship between the developer of a program and the source code he produces.
 He proposes that, beyond the simple transmission of instructions to a computer,
 the source code should be a means of communicating the intentions of the developer
 to another human being <span class="citation">(<a href="#ref-knuth1984LiterateProgramming" role="doc-biblioref">Knuth 1984</a>)</span>.</p>
-<p>As <span class="citation"><a href="#ref-schulte2012MultiLanguageComputingEnvironment" role="doc-biblioref">Schulte et al.</a> (<a href="#ref-schulte2012MultiLanguageComputingEnvironment" role="doc-biblioref">2012</a>)</span> explains, literate programming
+<p>As <span class="citation">Schulte et al. (<a href="#ref-schulte2012MultiLanguageComputingEnvironment" role="doc-biblioref">2012</a>)</span> explains, literate programming
 mixes source code and natural language, divided into blocks of instructions for
 the computer and blocks of text for human understanding. The code blocks are
 useful for scientific production because they participate in data processing and
@@ -449,15 +526,6 @@ Knuth, Donald E. 1984. <span>“Literate Programming.”</span> <em>The Computer
 <div id="ref-MA2017135" class="csl-entry">
 Ma, Xiaolei, Congcong Liu, Huimin Wen, Yunpeng Wang, and Yao-Jan Wu. 2017. <span>“Understanding Commuting Patterns Using Transit Smart Card Data.”</span> <em>Journal of Transport Geography</em> 58: 135–45. https://doi.org/<a href="https://doi.org/10.1016/j.jtrangeo.2016.12.001" class="external-link">https://doi.org/10.1016/j.jtrangeo.2016.12.001</a>.
 </div>
-<div id="ref-mauriciozambrano-bigiariniHydroTSMTimeSeries2020" class="csl-entry">
-Mauricio Zambrano-Bigiarini. 2020. <span>“<span class="nocase">hydroTSM</span>: Time Series Management, Analysis and Interpolation for Hydrological Modelling.”</span> Manual. <a href="https://github.com/hzambran/hydroTSM" class="external-link">https://github.com/hzambran/hydroTSM</a>.
-</div>
-<div id="ref-ClimatFranceMetropolitaine" class="csl-entry">
-Météo-France. 2020a. <span>“Le Climat En <span>France</span> métropolitaine.”</span> February 24, 2020. <a href="https://meteofrance.com/comprendre-climat/france/le-climat-en-france-metropolitaine" class="external-link">https://meteofrance.com/comprendre-climat/france/le-climat-en-france-metropolitaine</a>.
-</div>
-<div id="ref-ClimatsOutremerMeteoFrance" class="csl-entry">
-———. 2020b. <span>“Les Climats En Outre-Mer.”</span> February 24, 2020. <a href="https://meteofrance.com/comprendre-climat/france/les-climats-en-outre-mer" class="external-link">https://meteofrance.com/comprendre-climat/france/les-climats-en-outre-mer</a>.
-</div>
 <div id="ref-pattersonNaturalEarth2021" class="csl-entry">
 Patterson, Tom, and Nathaniel Vaughn Kelso. 2021. <span>“Natural Earth.”</span> <a href="https://www.naturalearthdata.com/" class="external-link">https://www.naturalearthdata.com/</a>.
 </div>
@@ -476,12 +544,6 @@ Robbins, Chandler S. 1981. <span>“Effect of Time of Day on Bird Activity.”</
 <div id="ref-schulte2012MultiLanguageComputingEnvironment" class="csl-entry">
 Schulte, Eric, Dan Davison, Thomas Dye, and Carsten Dominik. 2012. <span>“A <span>Multi-Language Computing Environment</span> for <span>Literate Programming</span> and <span>Reproducible Research</span>.”</span> <em>Journal of Statistical Software</em> 46 (1, 1): 1–24. <a href="https://doi.org/10.18637/jss.v046.i03" class="external-link">https://doi.org/10.18637/jss.v046.i03</a>.
 </div>
-<div id="ref-thieurmelSuncalcComputeSun2019" class="csl-entry">
-Thieurmel, Benoit, and Achraf Elmarhraoui. 2019. <span>“Suncalc: Compute Sun Position, Sunlight Phases, Moon Position and Lunar Phase.”</span> Manual. <a href="https://CRAN.R-project.org/package=suncalc" class="external-link">https://CRAN.R-project.org/package=suncalc</a>.
-</div>
-<div id="ref-wickhamWelcomeTidyverse2019" class="csl-entry">
-Wickham, Hadley, Mara Averick, Jennifer Bryan, Winston Chang, Lucy D’Agostino McGowan, Romain François, Garrett Grolemund, et al. 2019. <span>“Welcome to the Tidyverse.”</span> <em>Journal of Open Source Software</em> 4 (43): 1686. <a href="https://doi.org/10.21105/joss.01686" class="external-link">https://doi.org/10.21105/joss.01686</a>.
-</div>
 </div>
 </div>
 <div class="section level2">
@@ -495,14 +557,14 @@ not exceed the limits given above.</p>
 document.querySelector('#TOC h1').insertAdjacentHTML('afterend', '<wbr>');
 </script>
 </div>
-<div class="footnotes">
+<div class="footnotes footnotes-end-of-document">
 <hr>
 <ol>
 <li id="fn1"><p><a href="https://noise-planet.org/noisecapture.html" class="external-link uri">https://noise-planet.org/noisecapture.html</a><a href="#fnref1" class="footnote-back">↩︎</a></p></li>
 <li id="fn2"><p><a href="https://www.univ-gustave-eiffel.fr/en/" class="external-link uri">https://www.univ-gustave-eiffel.fr/en/</a><a href="#fnref2" class="footnote-back">↩︎</a></p></li>
 <li id="fn3"><p><a href="https://www.cnrs.fr/en" class="external-link uri">https://www.cnrs.fr/en</a><a href="#fnref3" class="footnote-back">↩︎</a></p></li>
 <li id="fn4"><p><a href="https://research-data.ifsttar.fr/dataset.xhtml?persistentId=doi:10.25578/J5DG3W" class="external-link uri">https://research-data.ifsttar.fr/dataset.xhtml?persistentId=doi:10.25578/J5DG3W</a><a href="#fnref4" class="footnote-back">↩︎</a></p></li>
-<li id="fn5"><p><a href="https://nicolas-roelandt.github.io/lasso-data-analysis/articles/temporal_exploratory_analysis.html" class="external-link uri">https://nicolas-roelandt.github.io/lasso-data-analysis/articles/temporal_exploratory_analysis.html</a><a href="#fnref5" class="footnote-back">↩︎</a></p></li>
+<li id="fn5"><p><a href="https://nicolas-roelandt.github.io/lasso-data-analysis/articles/" class="external-link uri">https://nicolas-roelandt.github.io/lasso-data-analysis/articles/</a><a href="#fnref5" class="footnote-back">↩︎</a></p></li>
 </ol>
 </div>
   </div>

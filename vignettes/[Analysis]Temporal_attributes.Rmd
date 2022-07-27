@@ -21,6 +21,8 @@ library(chron)
 library(here)
 library(dplyr)
 library(ggplot2)
+library(ltxplot)
+load_theme_ltx()
 # handle figures and tables numbering
 library(captioner)
 
@@ -72,28 +74,31 @@ fig_nums("type_tempo_fr", "Distribution of types of days by tag in France", disp
 
 ```
 
-```{r graph-tempo-data, echo = FALSE, fig.align='center', out.width="80%", message = FALSE, fig.cap= fig_nums("type_tempo")}
+```{r graph-tempo-data, echo = FALSE, fig.align='center', out.width="90%", message = FALSE, fig.cap= fig_nums("type_tempo")}
+
 
 ggplot(df_tags_day_type, aes(fill=day_type, y=proportion, x=tag)) + 
-    geom_bar(position="dodge", stat="identity")+ 
-  scale_fill_manual(values = c("#007eed","#e100ed","#edae00","#ed4700"))+
+    geom_bar(position="dodge", stat="identity") + 
+  scale_fill_manual(values = c("#d6d9ff","#ea1136","#f1cff2","#ff6700")) + 
   labs(
     x = "Tag names",
     y = "Proportion of tags (%)",
     title = "Repartition of tags by type of day",
     subtitle = "Noisecapture's tags in the World,
-      2017-2020") +
+      2017-2020")  +
+  theme_latex(font = "lmroman", base_size = 21)+
   theme(legend.position="bottom") + 
   scale_x_discrete(guide = guide_axis(n.dodge=2))
 
 
+
 ```
 
-```{r graph-tempo-data-fr, echo = FALSE, fig.align='center', out.width="80%", message = FALSE, fig.cap= fig_nums("type_tempo_fr")}
+```{r graph-tempo-data-fr, echo = FALSE, fig.align='center', out.width="90%", message = FALSE, fig.cap= fig_nums("type_tempo_fr")}
 
 ggplot(df_tags_day_type_fr, aes(fill=day_type, y=proportion, x=tag)) + 
   geom_bar(position="dodge", stat="identity")+ 
-  scale_fill_manual(values = c("#007eed","#e100ed","#edae00","#ed4700"))+
+  scale_fill_manual(values = c("#d6d9ff","#ea1136","#f1cff2","#ff6700"))+
   labs(
     x = "Tag names",
     y = "Proportion of tags (%)",
@@ -101,6 +106,8 @@ ggplot(df_tags_day_type_fr, aes(fill=day_type, y=proportion, x=tag)) +
     subtitle = "Noisecapture's tags in France,
       2017-2020") +
   theme(legend.position="bottom") + 
-  scale_x_discrete(guide = guide_axis(n.dodge=2))
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  theme_latex(font = "lmroman", base_size = 21)
+
 
 ```

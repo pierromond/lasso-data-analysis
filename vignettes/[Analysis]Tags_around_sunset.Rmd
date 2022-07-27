@@ -19,6 +19,8 @@ library(here)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(ltxplot)
+load_theme_ltx()
 
 ```
 
@@ -86,18 +88,19 @@ ggplot(tags_sunset_repartition %>% dplyr::filter(admin =="France")) +
 
 ```
 
-```{r sunset-graphs-fr-chat, echo = FALSE, fig.align='center', out.width="80%", message = FALSE, fig.cap= fig_nums("sunset-fr-chatting")}
+```{r sunset-graphs-fr-chat, echo = FALSE, fig.align='center', out.width="90%", message = FALSE, fig.cap= fig_nums("sunset-fr-chatting")}
 
-ggplot(tags_sunset_repartition %>% dplyr::filter(admin =="France" & tag_name == "chatting")) +
+ggplot(tags_sunset_repartition %>% dplyr::filter(admin =="France" & tag_name == "music")) +
   aes(x = after_sunset, y = percentage)+ 
-  geom_col() + geom_smooth(method = "loess", se = FALSE, color = "blue")  +
+  geom_col() + geom_smooth(method = "gam", se = FALSE, color = "blue")  +
   labs(
     x = "Time around sunset (hours)",
     y = "Proportion of tag (%)",
     title = "Repartition of tags from local sunset",
     subtitle = "Noisecapture's tags in France,
       2017-2020") +
-  scale_x_continuous(breaks = c(-12,-6,0,6,12))+
-  facet_wrap(vars(tag_name), scales = "free_y")
+  scale_x_continuous(breaks = seq(-12,12,by=3))+
+  facet_wrap(vars(tag_name), scales = "free_y") +
+  theme_latex(font = "lmroman", base_size = 21)
 
 ```

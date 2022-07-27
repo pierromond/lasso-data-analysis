@@ -21,6 +21,8 @@ library(dplyr)
 library(tidyr)
 library(stats)
 library(captioner)
+library(ltxplot)
+load_theme_ltx()
 
 ```
 
@@ -127,29 +129,32 @@ The weather data used is from France's national weather organisation *Météo-Fr
   
 It is to keep in mind that the weather data available to us via this method is limited to the one measured at weather stations. We coded a function getting the weather observed at the closest station. The median distance between stations and our tracks is **`r round(median(meteo_france$dist_station)/1000,2)` kilometers**, resulting in a small margin of error, the weather being susceptible to change on such a distance. 
 
-```{r rain-graph, echo=FALSE, fig.align='center', out.width="80%", message = FALSE, fig.cap= fig_nums("rain")}
+```{r rain-graph, echo=FALSE, fig.align='center', out.width="90%", message = FALSE, fig.cap= fig_nums("rain")}
 
 ggplot() +
   geom_col(aes(x = c("-no rain-","(0,0.2]","(0.2,0.4]","(0.4,0.6]","(0.6,1.4]","(1.4,2]","(2,7]","(7,+)"), y = group_rain_prop)) + 
   labs(
     x = "Precipitation (mm/h)",
     y = "Proportion of tracks with rain tag (%)",
-    title = "Repartition of tracks with rain tags based on precipitation",
+    title = "Repartition of tracks with rain tags by rainfall",
     subtitle = "Noisecapture's tags in France,
-      2017-2020")
+      2017-2020") +
+  theme_latex(font = "lmroman", base_size = 22)
 
 ```
 
-```{r wind-graph, echo=FALSE, fig.align='center', out.width="80%", message = FALSE, fig.cap= fig_nums("wind")}
+```{r wind-graph, echo=FALSE, fig.align='center', out.width="90%", message = FALSE, fig.cap= fig_nums("wind")}
 
 ggplot() +
   geom_col(aes(x = seq(from = 0, to =len), y = group_wind_prop)) +
   labs(
     x = "Beaufort Scale",
     y = "Proportion of tracks with wind tag (%)",
-    title = "Repartition of tracks with wind tags based on wind force",
+    title = "Repartition of tracks with wind tags by wind force",
     subtitle = "Noisecapture's tags in France,
-      2017-2020")
+      2017-2020") +
+  theme_latex(font = "lmroman", base_size = 22)
+
 ```
 
 In order to create those graphs, we selected scales to group our data (wind force and precipitation) and calculate the proportion of tags present in those groups. We tried to create groups of equal representation for our data, but our data being non-uniform and disparate, some of our groups of data are much less populated than others, creating a potential bias that could only be corrected by the aggregation of more participator's data.

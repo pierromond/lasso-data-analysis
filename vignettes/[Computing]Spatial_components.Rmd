@@ -1,0 +1,1879 @@
+---
+title: "Internship report"
+subtitle: "Spatial components"
+author: "Ludovic Moisan"
+supervisors: "Pierre aumond, Paul Chapron, Nicolas Roelandt"
+date: "`r Sys.Date()`"
+output: 
+  html_document :
+    theme: united
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r library-sunrise, include=FALSE}
+
+library(here)
+library(ggplot2)
+
+library(dplyr)
+library(tidyr)
+library(rgdal)
+library(geojsonsf)
+library(geosphere)
+library(sf)
+library(leaflet)
+library(stringr)
+library(RANN)
+library(shiny)
+library(tree)
+library(data.table)
+library(osmdata)
+library(lubridate)
+library(randomForest)
+
+```
+
+```{r setup-data-spatial, include = FALSE}
+
+here::i_am("vignettes/[Computing]Spatial_components.Rmd")
+
+if(!exists("all_info_tempo")){
+  if(!file.exists(here::here("data","all_info_tempo.rds"))){
+    URL2 <- "https://zenodo.org/record/6536129/files/time_after_sunrise.rds?download=1"
+    all_info_tempo <- readRDS(url(URL2))
+    saveRDS(all_info_tempo,here::here("data","all_info_tempo.rds"))
+  }
+  else{
+  all_info_tempo <- readRDS(here::here("data","all_info_tempo.rds"))
+  }
+}
+
+```
+
+```{r download-data-spatial, include = FALSE}
+
+
+if(!exists("bars_fr")){
+  if(!file.exists(here::here("raw_data","osm-fr-bars.geojson"))){
+    URL_bar <- "https://babel.opendatasoft.com/explore/dataset/osm-fr-bars/download/?format=geojson&timezone=Europe/Berlin&lang=fr"
+    bars_fr <- geojson_sf(URL_bar)
+    st_write(bars_fr,here::here("raw_data","osm-fr-bars.geojson"))
+  }
+  else{
+  bars_fr <- geojson_sf(here::here("raw_data","osm-fr-bars.geojson"))
+  }
+}
+
+if(!exists("rest_fr")){
+  if(!file.exists(here::here("raw_data","osm-restaurant-fr.geojson"))){
+    URL_rest <- "https://babel.opendatasoft.com/explore/dataset/osm-restaurant-fr/download/?format=geojson&timezone=Europe/Berlin&lang=fr"
+    rest_fr = geojson_sf(URL_rest)
+    st_write(rest_fr,here::here("raw_data","osm-restaurant-fr.geojson"))
+  }
+  else{
+  rest_fr <- geojson_sf(here::here("raw_data","osm-restaurant-fr.geojson"))
+  }
+}
+
+if(!exists("school_fr")){
+  if(!file.exists(here::here("raw_data","osm-fr-ecoles.geojson"))){
+    URL_school <- "https://babel.opendatasoft.com/explore/dataset/osm-fr-ecoles/download/?format=geojson&timezone=Europe/Berlin&lang=fr"
+    school_fr = geojson_sf(URL_school)
+    st_write(school_fr,here::here("raw_data","osm-fr-ecoles.geojson"))
+  }
+  else{
+  school_fr <- geojson_sf(here::here("raw_data","osm-fr-ecoles.geojson"))
+  }
+}
+
+if(!exists("religion_fr")){
+  if(!file.exists(here::here("raw_data","osm-fr-lieux-de-culte.geojson"))){
+    URL_religion <- "https://babel.opendatasoft.com/explore/dataset/osm-fr-lieux-de-culte/download/?format=geojson&timezone=Europe/Berlin&lang=fr"
+    religion_fr = geojson_sf(URL_religion)
+    st_write(religion_fr,here::here("raw_data","osm-fr-lieux-de-culte.geojson"))
+  }
+  else{
+  religion_fr <- geojson_sf(here::here("raw_data","osm-fr-lieux-de-culte.geojson"))
+  }
+}
+
+if(!exists("tourism_fr")){
+  if(!file.exists(here::here("raw_data","osm-fr-tourism.geojson"))){
+    URL_tourism <- "https://babel.opendatasoft.com/explore/dataset/osm-fr-tourism/download/?format=geojson&timezone=Europe/Berlin&lang=fr"
+    tourism_fr = geojson_sf(URL_tourism)
+    st_write(tourism_fr,here::here("raw_data","osm-fr-tourism.geojson"))
+  }
+  else{
+  tourism_fr <- geojson_sf(here::here("raw_data","osm-fr-tourism.geojson"))
+  }
+}
+
+if(!exists("sports_fr")){
+  if(!file.exists(here::here("raw_data","osm-fr-sport.geojson"))){
+    URL_sport <- "https://babel.opendatasoft.com/explore/dataset/osm-fr-sport/download/?format=geojson&timezone=Europe/Berlin&lang=fr"
+    sports_fr = geojson_sf(URL_sport)
+    st_write(sports_fr,here::here("raw_data","osm-fr-sport.geojson"))
+  }
+  else{
+  sports_fr <- geojson_sf(here::here("raw_data","osm-fr-sport.geojson"))
+  }
+}
+
+if(!exists("shops_fr")){
+  if(!file.exists(here::here("raw_data","osm-shop-fr.geojson"))){
+    URL_shops <- "https://babel.opendatasoft.com/explore/dataset/osm-shop-fr/download/?format=geojson&timezone=Europe/Berlin&lang=fr"
+    shops_fr = geojson_sf(URL_shops)
+    st_write(shops_fr,here::here("raw_data","osm-shop-fr.geojson"))
+  }
+  else{
+  shops_fr <- geojson_sf(here::here("raw_data","osm-shop-fr.geojson"))
+  }
+}
+
+if(!exists("trees_fr")){
+  if(!file.exists(here::here("raw_data","trees_fr.geojson"))){
+    URL_trees <- "https://data.opendatasoft.com/explore/dataset/osm-fr-arbres@babel/download/?format=geojson&timezone=Europe/Berlin&lang=fr"
+    trees_fr = geojson_sf(URL_trees)
+    st_write(trees_fr,here::here("raw_data","trees_fr.geojson"))
+  }
+  else{
+  trees_fr <- geojson_sf(here::here("raw_data","trees_fr.geojson"))
+  }
+}
+
+if(!exists("playground")){
+  if(!file.exists(here::here("raw_data","playground.geojson"))){
+    URL_playground <- "https://geodatamine.fr/dump/playground.geojson"
+    playgrounds = geojson_sf(URL_playground)
+    st_write(playgrounds,here::here("raw_data","playground.geojson"))
+  }
+  else{
+  playgrounds <- geojson_sf(here::here("raw_data","playground.geojson"))
+  }
+}
+
+if(!exists("parks")){
+  if(!file.exists(here::here("raw_data","parks_france.geojson"))){
+    
+    st_write(playgrounds,here::here("raw_data","parks_france.geojson"))
+  }
+  else{
+  parks <- geojson_sf(here::here("raw_data","parks_france.geojson"))
+  }
+}
+
+
+#Download Metropolitain France's geometry
+if(!exists("france_metro")){
+  if(!file.exists(here::here("raw_data","2020_France_metro_WGS84.geojson"))){
+    URLfr <- "https://github.com/nicolas-roelandt/lasso-data-analysis/raw/main/raw_data/2020_France_metro_WGS84.geojson"
+    france_metro <- geojson_sf(URLfr)
+    st_write(france_metro,here::here("raw_data","2020_France_metro_WGS84.geojson"))
+  }
+  else{
+  france_metro <- geojson_sf(here::here("raw_data","2020_France_metro_WGS84.geojson"))
+  }
+}
+
+
+if(!exists("carroye")){
+  if(!file.exists(here::here("raw_data/shapefile_pop","Filosofi2015_carreaux_200m_metropole.shp"))){
+    print("not implemented yet")
+  }
+  else{
+  carroye <- read_sf(here::here("raw_data/shapefile_pop","Filosofi2015_carreaux_200m_metropole.shp"))
+  }
+}
+
+if(!exists("carroye_nantes")){
+  if(!file.exists(here::here("raw_data/shapefile_pop","Nantes.shp"))){
+    print("not implemented yet")
+  }
+  else{
+  carroye_nantes <- read_sf(here::here("raw_data/shapefile_pop","Nantes.shp"))
+  }
+}
+
+if(!exists("pedestrian")){
+  if(!file.exists(here::here("raw_data","pedestrian.geojson"))){
+    #osm api request highway=pedestrian and area=yes in France
+    #opq(...)
+    st_write(pedestrian,here::here("raw_data","pedestrian.geojson"))
+  }
+  else{
+  pedestrian <- geojson_sf(here::here("raw_data","pedestrian.geojson"))
+  }
+}
+
+if(!exists("tfsd")){
+  tfsd <- read.csv2(here::here("raw_data","tfsd.txt"),sep = " ")
+  colnames(tfsd) <- c("pk_track","tfsd_bird","tfsd_chat")
+  tfsd <- data.frame(lapply(tfsd,as.numeric))
+}
+
+
+synopStations <- read.csv(here::here('raw_data','postesSynop.csv'), sep=";", header = TRUE)
+
+#Read the stations' data
+stations <- fread(here::here('raw_data','synop.csv'), sep=";", header = TRUE, 
+                       select = c("numer_sta"="numeric","date_r"="character",
+                                  "rr3"="character","ff"="character","t"="character","nnuage1"="numeric",
+                                  "year"="numeric","month"="numeric","day"="numeric","hour"="numeric"))
+
+france <- st_transform(france_metro,crs = st_crs("EPSG:2154"))
+trees_fr <- st_transform(trees_fr,crs = st_crs("EPSG:2154"))
+bars_fr <- st_transform(bars_fr,crs = st_crs("EPSG:2154"))
+rest_fr <- st_transform(rest_fr,crs = st_crs("EPSG:2154"))
+school_fr <- st_transform(school_fr,crs = st_crs("EPSG:2154"))
+playgrounds_fr <- st_transform(playgrounds,crs = st_crs("EPSG:2154"))
+#Dataset "shop" contains some restaurants and bars, to not overstep on the restaurant or bars datasets which are more complete concerning restaurants, we have to deselect those
+shops_fr <- st_transform(shops_fr,crs = st_crs("EPSG:2154")) %>% dplyr::filter(!type %in% unique(rest_fr$type))
+sports_fr <- st_transform(sports_fr,crs = st_crs("EPSG:2154"))
+tourism_fr <- st_transform(tourism_fr,crs = st_crs("EPSG:2154"))
+religion_fr <- st_transform(religion_fr,crs = st_crs("EPSG:2154"))
+parks_fr <- st_transform(parks,crs = st_crs("EPSG:2154"))
+pedestrian <- st_transform(pedestrian %>% dplyr::select('@id','geometry') %>% dplyr::mutate(geom_type = st_geometry_type(geometry), valid = st_is_valid(geometry)) %>% dplyr::filter(geom_type == "POLYGON" & valid == TRUE), crs = st_crs("EPSG:2154")) %>% dplyr::filter(st_is_valid(geometry) == TRUE)
+
+carroye <- st_transform(carroye,crs = st_crs("EPSG:2154"))
+
+carroye_tracks <- st_intersection(carroye,st_transform(st_as_sf(all_info_tempo,coords = c("lon","lat"), crs = 4326),crs = st_crs("EPSG:2154")))
+
+
+
+```
+
+```{r tag-visualisation, echo=FALSE}
+
+pal <- colorQuantile(palette = "RdYlBu", domain = all_info_tempo$pleasantness)
+
+ui = fluidPage(
+  sidebarPanel(selectInput(inputId = "tag_name", "Tag Name", choices = sort(unique(all_info_tempo$tag_name)),selected = "chatting")),
+  leafletOutput(outputId = "map", height = 600, width = 800)
+  )
+
+server = function(input, output) {
+  output$map = renderLeaflet({
+    leaflet(data = all_info_tempo[(all_info_tempo$tag_name) == input$tag_name, ] %>% filter(admin == "France")) %>%
+      setView(lat = 46.62, lng = 2.55, zoom = 6) %>% #To focus on France on opening, can be changed or disabled
+      addTiles() %>% addProviderTiles(providers$CartoDB.Positron) %>%
+      addCircleMarkers(lng = ~lon, lat = ~lat, stroke = FALSE, fillOpacity = 0.8, color = ~pal(pleasantness),
+                   radius = 6, 
+                   clusterOptions = markerClusterOptions(spiderfyOnMaxZoom = FALSE, maxClusterRadius = 60, disableClusteringAtZoom = 12),
+                   popup = ~leafpop::popupTable(all_info_tempo,
+                                       zcol = c("pk_track", "noise_level", "pleasantness"),
+                                       row.numbers = FALSE, feature.id = FALSE)) %>%
+      addLegend(position = "bottomright",
+            pal = pal, values = ~pleasantness, opacity = 1)})
+}
+
+shinyApp(ui, server)
+
+```
+
+
+```{r spatial-grid-analysis}
+
+# Transform projection ----
+
+france <- st_transform(france_metro,crs = st_crs("EPSG:2154"))
+bars_fr <- st_transform(bars_fr,crs = st_crs("EPSG:2154"))
+rest_fr <- st_transform(rest_fr,crs = st_crs("EPSG:2154"))
+school_fr <- st_transform(school_fr,crs = st_crs("EPSG:2154"))
+playgrounds <- st_transform(playgrounds,crs = st_crs("EPSG:2154"))
+#Dataset "shop" contains some restaurants and bars, to not overstep on the restaurant or bars datasets which are more complete concerning restaurants, we have to deselect those
+shops_fr <- st_transform(shops_fr,crs = st_crs("EPSG:2154")) %>% dplyr::filter(!type %in% unique(rest_fr$type))
+sports_fr <- st_transform(sports_fr,crs = st_crs("EPSG:2154"))
+tourism_fr <- st_transform(tourism_fr,crs = st_crs("EPSG:2154"))
+religion_fr <- st_transform(religion_fr,crs = st_crs("EPSG:2154"))
+pedestrian <- st_transform(pedestrian %>% dplyr::select('@id','geometry') %>% dplyr::mutate(geom_type = st_geometry_type(geometry), valid = st_is_valid(geometry)) %>% dplyr::filter(geom_type == "POLYGON" & valid == TRUE), crs = st_crs("EPSG:2154")) %>% dplyr::filter(st_is_valid(geometry) == TRUE)
+
+carroye <- st_transform(carroye,crs = st_crs("EPSG:2154"))
+
+# Traitement ----
+
+df_fr <- all_info_tempo %>% dplyr::filter(admin == "France") %>% dplyr::select(pk_track,tag_name,lon,lat)
+df_fr_coord <- st_transform(st_as_sf(df_fr, coords = c("lon", "lat"), crs = 4326),crs = st_crs("EPSG:2154"))
+
+df_fr_pk <- all_info_tempo %>% dplyr::filter(admin == "France") %>% distinct(pk_track, .keep_all= TRUE) %>% dplyr::select(pk_track,lon,lat)
+df_fr_coord_pk <- st_transform(st_as_sf(df_fr_pk, coords = c("lon", "lat"), crs = 4326),crs = st_crs("EPSG:2154"))
+
+#Cut squares of 1000m*1000m over france's territory
+# cs <- c(1000,1000)
+# my_grid <- sf::st_make_grid(x =france, 
+#                             cellsize=cs)%>% st_sf %>% st_cast
+# 
+#
+# 
+# my_grid$counts_pk <- lengths(st_intersects(my_grid,df_fr_coord_pk))
+# my_grid_f <- my_grid %>% dplyr::filter(counts_pk > 0) #%>% st_cast("MULTILINESTRING")
+# 
+# cs <- c(250,250)
+# 
+# n <- 0
+# for(geo in my_grid_f$geometry){
+#   test <- sf::st_make_grid(x = geo, cellsize = cs) %>% st_sf %>% st_cast
+#   if(!exists("df_grid")){
+#     df_grid <- test
+#   }
+#   else{
+#     df_grid <- rbind(df_grid,test)
+#   }
+#   n <- n + 1
+# }
+
+# n <- 0
+# for(geo in my_grid_f$geometry){
+#   test <- sf::st_make_grid(x = geo, cellsize = cs) %>% st_sf %>% st_cast
+#   if(!exists("grids")){
+#     grids <- list(test)
+#   }
+#   else{
+#     grids <- append(grids,test)
+#   }
+#   n <- n + 1
+# }
+# 
+# n = 1
+# nrows <- length(grids)*16
+# sf_grid <- st_sf(id = 1:nrows, geometry = st_sfc(lapply(1:nrows, function(x) st_polygon())))
+# for(x in 1:length(grids)){
+#   for(y in 1:16){
+#     geo <- grids[["geometry"]][[y]]
+#     print(geo)
+#     sf_grid[,2][n,] <- geo
+#     n <- n +1
+#   }
+# }
+# 
+# grid_pk2 <- (grids)
+
+#grid_pk <- df_grid
+
+# grid_pk <- sf::st_make_grid(x =my_grid_f, 
+#                             cellsize=cs) %>% st_sf %>% st_cast
+
+carroye$counts_pk <- lengths(st_intersects(carroye,df_fr_coord_pk))
+carroye_pk <- carroye %>% dplyr::filter(counts_pk > 0)
+
+grid_pk <- carroye_pk
+
+st_crs(grid_pk) <- st_crs("EPSG:2154")
+grid_pk$counts_pk <- lengths(st_intersects(grid_pk,df_fr_coord_pk))
+grid_pk <- grid_pk %>% dplyr::filter(counts_pk > 0)
+df_fr_voice <- df_fr_coord %>% filter(tag_name == "chatting")
+grid_pk$tagchat <- lengths(st_intersects(grid_pk,st_geometry(df_fr_voice)))
+df_fr_steps <- df_fr_coord %>% filter(tag_name == "footsteps")
+grid_pk$tagsteps <- lengths(st_intersects(grid_pk,st_geometry(df_fr_steps)))
+df_fr_music <- df_fr_coord %>% filter(tag_name == "music")
+grid_pk$tagmusic <- lengths(st_intersects(grid_pk,st_geometry(df_fr_music)))
+
+#Count each feature in each geometry
+grid_pk$bars <- lengths(st_intersects(grid_pk,st_geometry(bars_fr))) / 40000 #(200*200, surface of the carroye square)
+grid_pk$schools <- lengths(st_intersects(grid_pk,st_geometry(school_fr))) / 40000 
+grid_pk$rest <- lengths(st_intersects(grid_pk,st_geometry(rest_fr))) / 40000 
+grid_pk$social <- grid_pk$bars + grid_pk$rest
+grid_pk$playgrounds <- lengths(st_intersects(grid_pk,st_geometry(playgrounds))) / 40000 
+grid_pk$shops <- lengths(st_intersects(grid_pk,st_geometry(shops_fr))) / 40000 
+grid_pk$sport <- lengths(st_intersects(grid_pk,st_geometry(sports_fr))) / 40000 
+grid_pk$tourism <- lengths(st_intersects(grid_pk,st_geometry(tourism_fr))) / 40000 
+grid_pk$religion <- lengths(st_intersects(grid_pk,st_geometry(religion_fr))) / 40000 
+
+grid_pk <- grid_pk %>% dplyr::mutate(pedestrian_zone = case_when(
+  lengths(st_intersects(grid_pk,pedestrian)) > 0 ~ TRUE, 
+  TRUE ~ FALSE))
+
+
+plot(grid_pk$tagchat / grid_pk$counts_pk, grid_pk$bars)
+
+
+saveRDS(my_grid, here::here("data","my_grid.rds"))
+saveRDS(grid_pk, "grid_pk.rds")
+
+my_grid <- readRDS(here::here("data","my_grid.rds"))
+grid_pk <- readRDS(here::here("data","grid_pk.rds"))
+
+df_polystat <- grid_pk
+df_polystat$chat_percent <- grid_pk$tagchat / grid_pk$counts_pk
+df_polystat$music_percent <- grid_pk$tagmusic / grid_pk$counts_pk
+df_polystat$steps_percent <- grid_pk$tagsteps / grid_pk$counts_pk
+df_polystat$socialtags_score <- (df_polystat$chat_percent + df_polystat$music_percent + df_polystat$steps_percent)/3
+
+saveRDS(df_polystat, here::here("data","df_polystat.rds"))
+df_polystat <- readRDS(here::here("data","df_polystat.rds"))
+
+
+df_fr_c <- all_info_tempo %>% dplyr::filter(admin == "France") %>% st_as_sf(coords = c("lon", "lat"), crs = 4326) %>% st_transform(crs = st_crs("EPSG:2154"))
+
+test <- st_join(df_fr_c, df_polystat, left = TRUE) %>% st_transform(crs = 4326)
+test_clean <- test %>% dplyr::filter(!is.na(Depcom)) %>% dplyr::mutate(month = str_sub(ym,1,2))
+
+length(unique(test$pk_track)) - length(unique(test_clean$pk_track))
+#1282 traces perdues à cause du carroyer qui est pas partout
+
+val_predict <- test_clean %>% dplyr::select(local_time,month,after_sunrise,after_sunset,celsius,rain_mm,wind,week_end,ferie,lockdown,Ind,Men,Ind_0_3,Ind_4_5,Ind_6_10,Ind_11_17,Ind_18_24,Ind_25_39,Ind_40_54,Ind_55_64,Ind_65_79,Ind_80p,bars,schools,rest,playgrounds,shops,religion,sport,tourism,pedestrian_zone,chat_percent,socialtags_score) %>% st_drop_geometry()
+
+val_predict$lockdown <- as.logical(val_predict$lockdown)
+#val_predict$season <- as.factor(val_predict$season)
+val_predict$local_time <- as.numeric(val_predict$local_time)
+val_predict$month <- as.factor(val_predict$month)
+
+saveRDS(val_predict, here::here("data","val_predict.rds"))
+val_predict = readRDS(here::here("data","val_predict.rds"))
+
+```
+
+```{r exploration-données-carroye}
+# function ----
+
+#function to write the regression line equation on plots
+lm_eqn <- function(y,x){
+    m <- lm(y ~ x);
+    eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2, 
+                     list(a = format(unname(coef(m)[1]), digits = 2),
+                          b = format(unname(coef(m)[2]), digits = 2),
+                          r2 = format(summary(m)$r.squared, digits = 3)))
+    as.character(as.expression(eq));
+}
+
+# Bars : chatting -----
+
+group_bar_median <- c()
+for(i in sort(unique(df_polystat$bars))){
+  group_bar_median <- append(group_bar_median, median(unlist(df_polystat %>% filter(bars == i)%>% as.data.frame() %>% dplyr::select(chat_percent) %>% list()), na.rm = TRUE))
+}
+ggplot() + 
+  geom_point(aes(x = sort(unique(df_polystat$bars)), y = group_bar_median *100)) +
+  stat_smooth(aes(x = sort(unique(df_polystat$bars)), y = group_bar_median *100),method = "lm") +
+  labs(
+    x = "Median Number of bars in geometry",
+    y = "Median of chatting tags percentage"
+  ) + geom_label(aes(x = 10, y = 95, label = lm_eqn(group_bar_median, sort(unique(df_polystat$bars)))), parse = TRUE)
+
+
+
+
+#unique() loses the quantile percentage of the values, so we get them back with the quant_perc
+quant_bar <- unique(quantile(df_polystat$bars, seq(0,1,by=0.01)))
+t <- quantile(df_polystat$bars, seq(0,1,by=0.01))
+quant_perc_bar <- c()
+for(x in quant_bar){
+  fstqt = t[t == x][1]
+  quant_perc_bar <- append(quant_perc_bar, fstqt)
+}
+quantiles_bar <- (as.numeric(str_sub((attr(quant_perc_bar,"names")), end= -2)))[2:(length(quant_perc_bar))]
+
+median_bars <- c()
+for(x in unique(sort(df_polystat$group_bars))){median_bars <- append(median_bars,median(df_polystat[df_polystat$group_bars == x,]$bars))}
+
+df_polystat$group_bars <- cut(df_polystat$bars,
+                      breaks = quant_bar,
+                      include.lowest = TRUE, labels = FALSE)
+group_bar_median <- c()
+len <- (sort(unique(df_polystat$group_bars)))
+for(i in len){
+  group_bar_median <- append(group_bar_median, median(unlist(df_polystat %>% filter(group_bars == i)%>% as.data.frame() %>% dplyr::select(chat_percent) %>% list()), na.rm = TRUE))
+}
+
+
+# for alternate x value : sort(unique(df_polystat$group_bars))
+ggplot() + 
+  geom_point(aes(x = quantiles_bar, y = group_bar_median)) +
+  geom_smooth(aes(x = quantiles_bar, y = group_bar_median),method = "lm") +
+  labs(
+    x = "Quantiles of bars' number around tracks",
+    y = "Median of chatting tags percentage"
+  ) + geom_label(aes(x = 85, y = 0.57, label = lm_eqn(group_bar_median, quantiles_bar)), parse = TRUE)
+
+ggplot() + 
+  geom_point(aes(x = median_bars, y = group_bar_median * 100)) +
+  geom_smooth(aes(x = median_bars, y = group_bar_median * 100),method = "lm") +
+  labs(
+    x = "Median number of bars around tracks",
+    y = "Median of chatting tags percentage"
+  ) + geom_label(aes(x = 5, y = 70, label = lm_eqn(group_bar_median, median_bars)), parse = TRUE)
+
+
+
+# Bars + Restaurants : chatting ----
+
+#unique() loses the quantile percentage of the values, so we get them back with the quant_perc
+quant_social <- unique(quantile(df_polystat$social, seq(0,1,by=0.01)))
+t <- quantile(df_polystat$social, seq(0,1,by=0.01))
+quant_perc_soc <- c()
+for(x in quant_social){
+  fstqt = t[t == x][1]
+  quant_perc_soc <- append(quant_perc_soc, fstqt)
+}
+quantiles_soc <- (as.numeric(str_sub((attr(quant_perc_soc,"names")), end= -2)))[2:(length(quant_perc_soc)-1)]
+
+median_soc <- c()
+for(x in unique(sort(df_polystat$group_social))){median_soc <- append(median_soc,median(df_polystat[df_polystat$group_social == x,]$social))}
+
+df_polystat$group_social <- cut(df_polystat$social,
+                      breaks = quant_social,
+                      include.lowest = TRUE, labels = FALSE)
+
+group_social_median <- c()
+len <- (sort(unique(df_polystat$group_social)))
+for(i in len){
+  group_social_median <- append(group_social_median, median(unlist(df_polystat %>% filter(group_social == i)%>% as.data.frame() %>% dplyr::select(chat_percent) %>% list()), na.rm = TRUE))
+}
+
+
+ggplot() + 
+  geom_point(aes(x = quantiles_soc, y = group_social_median)) +
+  geom_smooth(aes(x = quantiles_soc, y = group_social_median), method = "lm") +
+  labs(
+    x = "Quantiles of amenities' number around tracks",
+    y = "Median of chatting tags percentage",
+  ) + geom_label(aes(x = 65, y = 0.5, label = lm_eqn(group_social_median, quantiles_soc)), parse = TRUE)
+
+ggplot() + 
+  geom_point(aes(x = median_soc, y = group_social_median * 100)) +
+  geom_smooth(aes(x = median_soc, y = group_social_median * 100),method = "lm") +
+  labs(
+    x = "Median number of social amenities around tracks",
+    y = "Median of chatting tags percentage"
+  ) + geom_label(aes(x = 35, y = 70, label = lm_eqn(group_social_median, median_soc)), parse = TRUE)
+
+
+# Ecoles : chatting ----
+
+
+group_school_median <- c()
+for(i in sort(unique(df_polystat$schools))){
+  group_school_median <- append(group_school_median, median(unlist(df_polystat %>% filter(schools == i)%>% as.data.frame() %>% dplyr::select(chat_percent) %>% list()), na.rm = TRUE))
+}
+ggplot() + 
+  geom_point(aes(x = sort(unique(df_polystat$schools)), y = group_school_median *100)) +
+  stat_smooth(aes(x = sort(unique(df_polystat$schools)), y = group_school_median *100),method = "lm") +
+  labs(
+    x = "Median Number of schools in geometry",
+    y = "Median of chatting tags percentage"
+  ) + geom_label(aes(x = 5, y = 75, label = lm_eqn(group_school_median, sort(unique(df_polystat$schools)))), parse = TRUE)
+
+# Parcs enfants : chatting ----
+
+#unique() loses the quantile percentage of the values, so we get them back with the quant_perc
+quant_play <- unique(quantile(df_polystat$playgrounds, seq(0,1,by=0.01)))
+t <- quantile(df_polystat$playgrounds, seq(0,1,by=0.01))
+quant_perc_play <- c()
+for(x in quant_play){
+  fstqt = t[t == x][1]
+  quant_perc_play <- append(quant_perc_play, fstqt)
+}
+quantiles_play <- (as.numeric(str_sub((attr(quant_perc_play,"names")), end= -2)))[2:(length(quant_perc_play))]
+
+median_plays <- c()
+for(x in unique(sort(df_polystat$group_plays))){median_plays <- append(median_plays,median(df_polystat[df_polystat$group_plays == x,]$playgrounds))}
+
+df_polystat$group_plays <- cut(df_polystat$playgrounds,
+                      breaks = quant_play,
+                      include.lowest = TRUE, labels = FALSE)
+
+group_play_median <- c()
+len <- (sort(unique(df_polystat$group_plays)))
+for(i in len){
+  group_play_median <- append(group_play_median, median(unlist(df_polystat %>% filter(group_plays == i)%>% as.data.frame() %>% dplyr::select(child_percent) %>% list()), na.rm = TRUE))
+}
+
+
+# for alternate x value : sort(unique(df_polystat$group_plays))
+ggplot() + 
+  geom_point(aes(x = quantiles_play, y = group_play_median)) +
+  geom_smooth(aes(x = quantiles_play, y = group_play_median),method = "lm") +
+  labs(
+    x = "Quantiles of playgrounds' number around tracks",
+    y = "Median of children tags percentage"
+  ) #+ geom_label(aes(x = 85, y = 0.57, label = lm_eqn(group_play_median, quantiles_play)), parse = TRUE)
+
+ggplot() + 
+  geom_point(aes(x = median_plays, y = group_play_median * 100)) +
+  geom_smooth(aes(x = median_plays, y = group_play_median * 100),method = "lm") +
+  labs(
+    x = "Median number of playgrounds around tracks",
+    y = "Median of children tags percentage"
+  ) #+ geom_label(aes(x = 5, y = 70, label = lm_eqn(group_play_median, median_plays)), parse = TRUE)
+ 
+# Visu ----
+   
+# ui = fluidPage(
+#   sidebarPanel(selectInput(inputId = "tag_name", "Tag Name", choices = c("Bars","Restaurants","Schools"),selected = "Bars")),
+#   leafletOutput(outputId = "map", height = 600, width = 800)
+#   )
+
+pal_grid <- colorNumeric(palette = 'magma',domain = df_polystat$tagchat/df_polystat$counts_pk)
+
+leaflet(st_transform(df_polystat, crs = st_crs(4326))) %>% addProviderTiles(providers$CartoDB.Positron) %>% 
+  leaflet::addPolygons(weight = 1, 
+    popup = ~paste(
+    as.character(counts_pk)," tracks","<br>", 
+    as.character(tagchat)," chatting tags","<br>",
+    as.character(tagsteps)," footsteps tags","<br>",
+#    as.character(tagchild)," children tags","<br>",
+    as.character(bars)," bars","<br>",
+    as.character(rest)," restaurants","<br>",
+    as.character(schools)," schools","<br>",
+    as.character(sport)," sports area/terrains","<br>",
+    as.character(playgrounds)," playgrounds","<br>",
+    as.character(religion)," places of worship ","<br>",
+    as.character(tourism)," tourism spots/info","<br>"),
+    color = ~pal_grid(/counts_pk),
+    highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE))
+
+
+```
+
+
+```{r some-functions}
+
+get_season <- function(date,lat){
+  
+  y_m <- format(as.Date(date), format ="%m-%d")
+  
+  north_spring <- "03-21"
+  north_summer <- "06-22"
+  north_autumn <- "09-22"
+  north_winter <- "12-22"
+  start_year <- "01-01"
+  end_year <- "12-31"
+  south_autumn <- "03-21"
+  south_winter <- "06-22"
+  south_spring <- "09-22"
+  south_summer <- "12-22"
+  
+  season = case_when(
+      lat > 23.5 & lat < 66.5 & y_m >= north_spring & y_m < north_summer  ~ "spring",
+      lat > 23.5 & lat < 66.5 & y_m >= north_summer & y_m < north_autumn  ~ "summer",
+      lat > 23.5 & lat < 66.5 & y_m >= north_autumn & y_m < north_winter  ~ "autumn",
+      lat > 23.5 & lat < 66.5 & y_m >= north_winter & y_m <= end_year  ~ "winter",
+          lat > 23.5 & lat < 66.5 & y_m >= start_year & y_m < north_spring  ~ "winter",
+  
+      lat < -23.5 & lat > -66.5 & y_m >= south_autumn & y_m < south_winter  ~ "autumn",
+      lat < -23.5 & lat > -66.5 & y_m >= south_winter & y_m < south_spring  ~ "winter",
+      lat < -23.5 & lat > -66.5 & y_m >= south_spring & y_m < south_summer  ~ "spring",
+      lat < -23.5 & lat > -66.5 & y_m >= south_summer & y_m <= end_year  ~ "summer",
+          lat < -23.5 & lat > -66.5 & y_m >= start_year & y_m < south_autumn  ~ "summer",
+      
+      lat <= 23.5 & lat >= -23.5 ~ "equator",
+      lat >= 66.5 | lat <= -66.5 ~ "pole"
+      )
+  
+  return(season)
+  
+}
+
+get_carroye <- function(lon,lat){
+  
+  point_coord = st_transform(st_as_sf(data.frame(lat=lat,lon=lon), coords = c("lon", "lat"), crs = 4326), crs = st_crs("EPSG:2154"))
+  
+  row_carroye <- st_intersects(point_coord,carroye_tracks)
+  
+  info_carroye <- carroye[row_carroye[[1]],] %>% dplyr::select(Ind,Men,Ind_0_3,Ind_4_5,Ind_6_10,Ind_11_17,Ind_18_24,Ind_25_39,Ind_40_54,Ind_55_64,Ind_65_79,Ind_80p)
+  
+  pop_vals <- dplyr::select(info_carroye %>% drop_na(Ind),c(contains("Ind_")))
+  pop_vals$maj <- colnames(pop_vals)[apply(pop_vals,1,which.max)]
+  info_carroye$pop_maj <- as.factor(pop_vals$maj)
+  
+  info_carroye <- dplyr::select(info_carroye,-c(contains("Ind")))
+  
+  if(dim(info_carroye)[1] == 0){
+    info_carroye <- data.frame("Men" = NA, "geometry" = NA, "pop_maj" = NA)
+  }
+  
+  return(info_carroye)
+}
+
+get_carroye_buffer <- function(coord){
+  
+  if(!exists("carroye_pk")){
+    df_fr_pk <- all_info_tempo %>% dplyr::filter(admin == "France") %>% distinct(pk_track, .keep_all= TRUE) %>%
+      dplyr::select(pk_track,lon,lat)
+    df_fr_coord_pk <- st_transform(st_as_sf(df_fr_pk, coords = c("lon", "lat"), crs = 4326),crs = st_crs("EPSG:2154"))
+    carroye$counts_pk <- lengths(st_intersects(carroye,df_fr_coord_pk))
+    carroye_pk <- carroye %>% dplyr::filter(counts_pk > 0)
+  }
+  
+  
+  row_carroye <- st_intersects(coord,carroye_pk)
+  if(length(row_carroye[[1]]) != 0){
+    info_carroye <- carroye[row_carroye[[1]],] %>%
+      dplyr::select(Ind,Men,Ind_0_3,Ind_4_5,Ind_6_10,Ind_11_17,Ind_18_24,Ind_25_39,Ind_40_54,Ind_55_64,Ind_65_79,Ind_80p) %>%
+      st_drop_geometry()
+  }
+  else{
+    info_carroye <- data.frame(matrix(nrow = 1, ncol = 12))
+    colnames(info_carroye) <- c("Ind","Men","Ind_0_3","Ind_4_5","Ind_6_10","Ind_11_17","Ind_18_24","Ind_25_39","Ind_40_54","Ind_55_64","Ind_65_79","Ind_80p")
+  }
+  
+  return(info_carroye)
+  
+}
+
+#A utiliser pour accélérer la création de nouveaux points
+define_zone_attributes <- function(zone){
+  
+  bars_zone <- st_intersection(zone,bars_fr)
+  schools_zone <- st_intersection(zone,school_fr) 
+  rest_zone <- st_intersection(zone,rest_fr)
+  playgrounds_zone <- st_intersection(zone,playgrounds_fr)
+  shops_zone <- st_intersection(zone,shops_fr)
+  sport_zone <- st_intersection(zone,sport_fr)
+  tourism_zone <- st_intersection(zone,tourism_fr)
+  religion_zone <- st_intersection(zone,religion_fr)
+  trees_zone <- st_intersection(zone,trees_fr)
+  
+  return(list(bars_zone,schools_zone,resst_zone,playgrounds_zone,shops_zone,sport_zone,tourism_zone,religion_zone,trees_zone))
+}
+
+get_osmdata <- function(lon,lat){
+  
+  pt <- st_transform(st_as_sf(data.frame(lon,lat), coords =(c("lon","lat")), crs = 4326), crs = st_crs("EPSG:2154"))
+  
+  trees <- length(unlist(st_is_within_distance(pt, trees_fr, dist = 250)))
+  bars <- length(unlist(st_is_within_distance(pt, bars_fr, dist = 250)))
+  rest <- length(unlist(st_is_within_distance(pt, rest_fr, dist = 250)))
+  playgrounds <- length(unlist(st_is_within_distance(pt, playgrounds_fr, dist = 250)))
+  sport <- length(unlist(st_is_within_distance(pt, sports_fr, dist = 250)))
+  tourism <- length(unlist(st_is_within_distance(pt, tourism_fr, dist = 250)))
+  shops <- length(unlist(st_is_within_distance(pt, shops_fr, dist = 250)))
+  religion <- length(unlist(st_is_within_distance(pt, religion_fr, dist = 250)))
+  schools <- length(unlist(st_is_within_distance(pt, school_fr, dist = 250)))
+  
+
+  # buffer <- st_buffer(st_transform(st_as_sf(data.frame(lon,lat), coords =(c("lon","lat")), crs = 4326), crs = st_crs("EPSG:2154")), dist = 250)
+  # 
+  # #Count each feature in each geometry
+  # bars <- lengths(st_intersects(buffer,st_geometry(bars_fr)))
+  # print("bar")
+  # schools <- lengths(st_intersects(buffer,st_geometry(school_fr)))
+  # print("schools")
+  # rest <- lengths(st_intersects(buffer,st_geometry(rest_fr)))
+  # print("rest")
+  # playgrounds <- lengths(st_intersects(buffer,st_geometry(playgrounds_fr)))
+  # print("play")
+  # shops <- lengths(st_intersects(buffer,st_geometry(shops_fr)))
+  # print("shops")
+  # sport <- lengths(st_intersects(buffer,st_geometry(sports_fr))) 
+  # print("sport")
+  # tourism <- lengths(st_intersects(buffer,st_geometry(tourism_fr)))
+  # print("tourism")
+  # religion <- lengths(st_intersects(buffer,st_geometry(religion_fr)))
+  # print("religion")
+  # trees <- lengths(st_intersects(buffer,st_geometry(trees_fr)))
+  # print("trees")
+  p <- st_within(st_transform(st_as_sf(data.frame(lon,lat), coords =(c("lon","lat")), crs = 4326), crs = st_crs("EPSG:2154")),parks_fr)
+  park <- ifelse(length(p[[1]]) !=0, TRUE,FALSE)
+  print("parks")
+  info_osm <- dplyr::mutate_all(data.frame(bars,schools,rest,playgrounds,shops,sport,tourism,religion,trees), function(x) as.numeric(x)) %>% dplyr::mutate(park = park)
+  
+  return(info_osm)
+}
+
+
+get_osmdata_buffer <- function(lon,lat){
+  
+
+  
+  
+  info_osm <- lapply(data.frame(bars,schools,rest,playgrounds,shops,sport,tourism,religion),as.numeric)
+  
+  return(info_osm)
+}
+
+get_zone_info <- function(coord){
+  osm_info <- data.frame(get_osmdata_buffer(st_buffer(coord, 250)))
+  carroye_info <- data.frame(get_carroye_buffer(coord))
+  zone_info <- cbind(osm_info,carroye_info)
+  print(zone_info)
+  return(zone_info)
+}
+
+get_sunrise <- function(date, lat, lon, tz= "UTC") {
+  #compute sunrise time from localisation and UTC time
+  #return NA if error
+  in_lat = round(lat,5)
+  in_lon = round(lon,5)
+  in_tz = tz
+  
+  sunrise = tryCatch(suncalc::getSunlightTimes(
+    date = lubridate::date(date),
+    lat = in_lat,
+    lon = in_lon,
+    tz   = in_tz
+  )$sunrise, error=function(e) NA)
+
+  return(sunrise)
+}
+
+get_sunset <- function(date, lat, lon, tz= "UTC") {
+  # compute sunset time from localisation and UTC time
+  #return NA if error
+  in_lat = round(lat,5)
+  in_lon = round(lon,5)
+  in_tz = tz
+  
+  sunset = tryCatch(suncalc::getSunlightTimes(
+    date = lubridate::date(date),
+    lat = in_lat,
+    lon = in_lon,
+    tz   = in_tz
+  )$sunset, error=function(e) NA)
+
+  return(sunset)
+}
+
+get_lockdown <- function(date){
+  
+  lockdown_fr_1 <- interval(as_date("2020-03-17"),as_date("2020-05-11"))
+  lockdown_fr_2 <- interval(as_date("2020-10-30"),as_date("2020-12-15"))
+  lockdown_fr_3 <- interval(as_date("2021-04-04"),as_date("2021-05-03"))
+  
+  if(as_date(date) %within% lockdown_fr_1 | as_date(date) %within% lockdown_fr_2 | as_date(date) %within% lockdown_fr_3){
+    return(TRUE)
+    }
+  else{
+    return(FALSE)
+  }
+}
+
+get_weekend <- function(date){
+  return(chron::is.weekend(lubridate::as_date(date)))
+}
+
+get_public_holiday <- function(date,code){
+  y = as.character(lubridate::year(date))
+  ferie = jsonlite::fromJSON(paste0("https://date.nager.at/api/v2/publicholidays/",y,"/",code))
+  
+  if(as_date(date) %in% as_date(ferie$date)){
+    return(TRUE)
+  }
+  else{
+    return(FALSE)
+  }
+  
+}
+
+
+  
+#Function to determine the nearest station given any coordinate for weather data
+get_nearest_station <- function(lon,lat){
+  if(!exists("synopStations")){
+  synopStations <- read.csv(here::here('raw_data','postesSynop.csv'), sep=";", header = TRUE)
+  }
+  synopStations$distance <- apply(synopStations[,c('Longitude','Latitude')], 1,
+                                  function(x){
+                                    synopStations$distance <- 
+                                      geosphere::distGeo(c(as.numeric(x['Longitude']),as.numeric(x['Latitude'])),c(lon,lat))
+                                  })
+  
+  synopStations[which(synopStations$distance==min(synopStations$distance, na.rm = TRUE)), ]
+}
+
+get_weather <- function(lon,lat,y,m=1,d=1,h=12){
+  ID <- (get_nearest_station(lon, lat))$ID
+  dist <- (get_nearest_station(lon, lat))$distance
+  if(!exists("stations")){
+  stations <- fread(here::here('raw_data','synop.csv'), sep=";", header = TRUE, 
+                       select = c("numer_sta"="numeric","date_r"="character",
+                                  "rr3"="character","ff"="numeric","t"="numeric","nnuage1"="numeric",
+                                  "year"="numeric","month"="numeric","day"="numeric","hour"="numeric"))
+  }
+  h_a <- ceiling(h/3)*3
+  h_b <- if_else(h_a == 24, 0, h_a)
+  station <- stations %>% filter(numer_sta == ID & year == y & month == m & day == d & hour == h_b)
+  if(length(station$rr3)==0){
+    rain_mm <- NA
+  }
+  if(length(station$rr3)!=0){
+    rain_mm <- as.numeric(station$rr3)
+  }
+  if(length(station$ff)==0){
+    wind <- NA
+  }
+  if(length(station$ff)!=0){
+    wind <- as.numeric(station$ff)
+  }
+  if(length(station$t)==0){
+    celsius <- NA
+  }
+  if(length(station$t)!=0){
+    celsius <- as.numeric(station$t) - 273.15
+  }
+  if(length(station$nnuage1)==0){
+    cloud <- NA
+  }
+  if(length(station$nnuage1)!=0){
+    cloud <- as.numeric(station$nnuage1)
+  }
+  info_weather <- data.frame(rain_mm,celsius,wind)
+  return(info_weather)
+}
+
+get_data <- function(lon,lat,hour_point,date_point, tz_name1st = "Europe/Paris"){
+  
+  season <- get_season(date_point,lat)
+  
+  sunrise_utc <- get_sunrise(date_point,lat,lon)
+  sunset_utc <- get_sunset(date_point,lat,lon)
+  
+  local_sunrise = lubridate::local_time(sunrise_utc,tz_name1st, units = "hours")
+  after_sunrise = case_when(
+    hour_point - local_sunrise >= 12 ~ -(24 - hour_point + local_sunrise),
+    TRUE ~ hour_point - local_sunrise)
+  
+  local_sunset = lubridate::local_time(sunset_utc,tz_name1st, units = "hours")
+  after_sunset = case_when(
+    hour_point - local_sunset >= 12 ~ -(24 - hour_point - local_sunset),
+    hour_point - local_sunset <= -12 ~ 24 - abs(hour_point - local_sunset),
+    TRUE ~ hour_point - local_sunset)
+  
+  new_point <- data.frame(lat = lat, lon = lon, 
+                          local_time = as.numeric(hour_point), 
+                          #season = as.factor(get_season(date_point,lat)),
+                          #after_sunrise = as.numeric(after_sunrise),
+                          month = as.numeric(month(date_point)),
+                          after_sunset = as.numeric(after_sunset),
+                          get_osmdata(lon,lat),
+                          get_carroye(lon,lat),
+                          get_weather(lon,lat,year(date_point),month(date_point),day(date_point),hour_point),
+                          week_end = as.logical(get_weekend(date_point)),
+                          ferie = as.logical(get_public_holiday(date_point,"fr")),
+                          lockdown = as.logical(get_lockdown(date_point))
+                          )
+  return(new_point)
+}
+
+get_spatial_attribute <- function(lon,lat){
+  
+  new_point <- data.frame(lat = lat, lon = lon, 
+                          
+                          get_osmdata(lon,lat),
+                          get_carroye(lon,lat)
+                          )
+  return(new_point)
+}
+
+get_spatial_attribute_z <- function(lon,lat,zone){
+  
+  new_point <- data.frame(lat = lat, lon = lon, 
+                          
+                          get_osmdata(lon,lat,zone),
+                          get_carroye(lon,lat)
+                          )
+  return(new_point)
+}
+
+get_tempo_attribute <- function(df,hour_point,date_point,tz_name1st = "Europe/Paris"){
+  
+  sunrises <- purrr::pmap_dfr(all_info[!duplicated(df$pk_track),] %>% select(pk_track, date = record_utc, lat, lon), get_sunrise) %>% dplyr::mutate(local_sunrise = lubridate::local_time(sunrise_utc,tz_name1st, units = "hours"))
+  sunsets <- purrr::pmap_dfr(all_info[!duplicated(all_info$pk_track),] %>% select(pk_track, date = record_utc, lat, lon), get_sunset) %>% dplyr::mutate(local_sunrise = lubridate::local_time(sunrise_utc,tz_name1st, units = "hours"))
+  
+}
+
+get_temporal_attribute <- function(lon,lat,hour_point,date_point, tz_name1st = "Europe/Paris"){
+  
+  #season <- get_season(date_point,lat)
+  
+  sunrise_utc <- get_sunrise(date_point,lat,lon)
+  sunset_utc <- get_sunset(date_point,lat,lon)
+  
+  local_sunrise = lubridate::local_time(sunrise_utc,tz_name1st, units = "hours")
+  # after_sunrise = case_when(
+  #   hour_point - local_sunrise >= 12 ~ -(24 - hour_point + local_sunrise),
+  #   TRUE ~ hour_point - local_sunrise)
+  
+  local_sunset = lubridate::local_time(sunset_utc,tz_name1st, units = "hours")
+  after_sunset = case_when(
+    hour_point - local_sunset >= 12 ~ -(24 - hour_point - local_sunset),
+    hour_point - local_sunset <= -12 ~ 24 - abs(hour_point - local_sunset),
+    TRUE ~ hour_point - local_sunset)
+  
+  new_point <- data.frame(lat = lat, lon = lon, 
+                          local_time = as.numeric(hour_point), 
+                          #season = as.factor(get_season(date_point,lat)),
+                          #after_sunrise = as.numeric(after_sunrise),
+                          month = as.numeric(month(date_point)),
+                          after_sunset = as.numeric(after_sunset),
+                          get_weather(lon,lat,year(date_point),month(date_point),day(date_point),hour_point),
+                          week_end = as.logical(get_weekend(date_point)),
+                          ferie = as.logical(get_public_holiday(date_point,"fr")),
+                          lockdown = as.logical(get_lockdown(date_point))
+                          )
+  return(new_point)
+}
+
+
+get_pred <- function(model,new_data){
+  
+  pred.rf <- predict(model,new_data, predict.all=TRUE)
+  
+  pred.rf$aggregate
+  
+  pred.rf.int <- t(apply(pred.rf$individual, 1, function(x){ 
+    c( mean(x) + c(-1.96,1.96)*sd(x), quantile(x, c(0.025,0.975)) )}))
+  
+  return(pred.rf.int)
+
+}
+
+completeFun <- function(data, desiredCols) {
+  completeVec <- complete.cases(data[, desiredCols])
+  return(data[completeVec, ])
+}
+```
+
+```{r dataset_compo}
+
+data_fr <- st_transform(st_as_sf(inner_join(all_info_tempo %>% dplyr::filter(admin == "France" & time_length < 3600),tfsd), coords = c("lon", "lat"), crs = 4326),crs = st_crs("EPSG:2154")) %>% dplyr::mutate(month = str_sub(local_date,6,7))
+
+# A REFAIRE AVEC BARS RESTO ETC DANS UN RAYON PLUTOT QUE LES CARROYES
+temp_data <- do.call(rbind, lapply(data_fr %>% distinct(pk_track, .keep_all= TRUE) %>% dplyr::pull(geometry), get_zone_info))
+
+saveRDS(temp_data,here::here("data","temp_data.rds"))
+
+temp_fr <- cbind(data_fr %>% distinct(pk_track, .keep_all= TRUE) %>% dplyr::select(-tag_name),temp_data)
+full_data_fr <- inner_join(temp_fr,data_fr %>% st_drop_geometry())
+
+saveRDS(full_data_fr,here::here("data","full_data_fr.rds"))
+full_data_fr <- readRDS(here::here("data","full_data_fr.rds"))
+
+pop_vals = dplyr::select(full_data_fr %>% drop_na(Ind),c(contains("Ind_"),pk_track)) %>% st_drop_geometry()
+pop_vals$maj <- colnames(pop_vals)[apply(pop_vals%>%dplyr::select(-pk_track),1,which.max)]
+pop_maj <- pop_vals %>% dplyr::select(c(pk_track,maj)) %>% distinct(pk_track,.keep_all = TRUE)
+
+#Ind_0_3,Ind_4_5,Ind_6_10,Ind_11_17,Ind_18_24,Ind_25_39,Ind_40_54,Ind_55_64,Ind_65_79,Ind_80p,
+clean_data_fr <- full_data_fr %>% dplyr::select(pk_track,pleasantness,noise_level,local_time,month,after_sunrise,after_sunset,celsius,rain_mm,wind,week_end,ferie,lockdown,Ind,Men,bars,schools,rest,playgrounds,shops,religion,sport,tourism,tag_name,tfsd_bird,tfsd_chat) %>% 
+  dplyr::mutate(lockdown = as.logical(lockdown)) %>% left_join(pop_maj,by="pk_track")
+
+
+pal_grid <- colorNumeric(palette = 'RdYlGn',domain = full_spatiotempo_fr$tfsd_chat)
+leaflet(st_transform(full_spatiotempo_fr, crs = st_crs(4326))) %>% addProviderTiles(providers$CartoDB.Positron) %>% 
+     leaflet::addCircleMarkers(color = ~pal_grid(tfsd_chat), popup = ~paste(as.character(tfsd_chat)))
+
+pal_grid <- colorNumeric(palette = 'RdYlGn',domain = full_spatiotempo_fr$tfsd_bird)
+leaflet(st_transform(full_spatiotempo_fr, crs = st_crs(4326))) %>% addProviderTiles(providers$CartoDB.Positron) %>% 
+     leaflet::addCircleMarkers(color = ~pal_grid(tfsd_bird), popup = ~paste(as.character(tfsd_bird)))
+
+pal_grid <- colorQuantile(palette = 'RdYlGn',domain = full_spatiotempo_fr$tfsd_chat / full_spatiotempo_fr$tfsd_bird)
+leaflet(st_transform(full_spatiotempo_fr, crs = st_crs(4326))) %>% addProviderTiles(providers$CartoDB.Positron) %>% 
+     leaflet::addCircleMarkers(color = ~pal_grid(tfsd_chat / tfsd_bird), popup = ~paste(as.character(tfsd_chat / tfsd_bird)))
+
+```
+
+```{r add_osm_terrains}
+
+full_points <- st_transform(clean_data_fr,crs = st_crs(4326)) %>%
+  dplyr::mutate(lon = sf::st_coordinates(.)[,1],
+                lat = sf::st_coordinates(.)[,2]) %>%
+  st_drop_geometry()
+
+tracks_points <- full_points %>% distinct(pk_track, .keep_all = TRUE)
+
+
+datalist = list()
+for(i in 1:nrow(tracks_points)){
+  x <- opq_enclosing(tracks_points[[i,"lon"]], tracks_points[[i,"lat"]], key = "leisure", value = "park") %>% osmdata_sf()
+  
+  dat <- x$osm_points$geometry
+  dat$i = i
+  dat$pk_track = tracks_points[[i,"pk_track"]]
+  datalist[[i]] <- dat
+  print(i) #Only to check where the calculation is at, since it's a pretty long process
+}
+
+
+parks <- data.frame(matrix(nrow = 1, ncol = 2))
+colnames(parks) <- c("pk_track","park")
+for(i in 1:nrow(tracks_points)){
+  x <- opq_around(tracks_points[[i,"lon"]], tracks_points[[i,"lat"]], key = "leisure", value = "park") %>% osmdata_sf()
+  parks[i,1] <- tracks_points[i,"pk_track"]
+  parks[i,2] <- ifelse(length(x$osm_polygons$geometry) != 0, TRUE, FALSE)
+  print(i) #Only to check where the calculation is at, since it's a pretty long process
+}
+
+trees <- data.frame(matrix(nrow = 1, ncol = 2))
+colnames(trees) <- c("pk_track","trees")
+for(i in 1:nrow(tracks_points)){
+  x <- opq_around(tracks_points[[i,"lon"]], tracks_points[[i,"lat"]],radius = 250, key = "natural", value = "tree") %>% osmdata_sf()
+  trees[i,1] <- tracks_points[i,"pk_track"]
+  trees[i,2] <- length(x$osm_points$geometry)
+  print(i) #Only to check where the calculation is at, since it's a pretty long process
+}
+
+full_spatiotempo_fr <- inner_join(inner_join(clean_data_fr,trees,by="pk_track"),parks,by="pk_track")
+
+saveRDS(full_spatiotempo_fr, here::here("data","full_spatiotempo_fr.rds"))
+full_spatiotempo_fr <- readRDS(here::here("data","full_spatiotempo_fr.rds")) %>% relocate(trees, .before = tag_name)
+
+
+
+
+
+
+```
+
+```{r full_spatiotempo predict}
+
+data_chat <- full_spatiotempo_fr %>% dplyr::select(-c(tfsd_chat,tfsd_bird)) %>% st_drop_geometry()
+
+DT <- (data_chat) %>% dplyr::select(-c(contains("Ind_"),Ind,after_sunrise))
+
+#Réaliser RF pour deviner tag chat -> faire catégorie chat_on
+
+DT.chat <- DT %>% dplyr::mutate(chat = case_when(tag_name == "chatting" ~ TRUE, TRUE ~ FALSE)) %>% dplyr::select(-tag_name) %>% na.omit()
+DT.chat$chat <- as.factor(DT.chat$chat)
+DT.chat$pop_maj <- as.factor(DT.chat$pop_maj)
+
+training_indices <- sample(nrow(DT.chat),nrow(DT.chat)*80/100)
+
+training.cat <- DT.chat[training_indices,]
+testing.cat <- DT.chat[-training_indices,]
+
+rf.cat <- randomForest::randomForest(x = training.cat %>% dplyr::select(-(chat)), 
+                                     y = training.cat$chat , data = training.cat, 
+                                     xtest = testing.cat %>% dplyr::select(-(chat)), 
+                                     ytest = testing.cat$chat, 
+                                     importance = TRUE, ntree = 300, type = "classification", mtry = 6, keep.forest = TRUE, classwt = c(1,5))
+
+plot(rf.cat)
+varImpPlot(rf.cat)
+rf.cat
+
+
+DT.chat <- DT %>% na.omit() %>% group_by(pk_track) %>% mutate(tag_presence = case_when(any(tags == "chatting") ~TRUE, TRUE ~FALSE))
+DT.chat$pop_maj <- as.factor(DT.chat$pop_maj)
+
+
+
+DT.chat$tag_name <- as.factor(DT.chat$tag_name)
+
+training_indices <- sample(nrow(DT.chat),nrow(DT.chat)*80/100)
+
+training.cat <- DT.chat[training_indices,]
+testing.cat <- DT.chat[-training_indices,]
+
+rf.cat <- randomForest::randomForest(x = training.cat %>% dplyr::select(-(tag_name)), 
+                                     y = training.cat$tag_name , data = training.cat, 
+                                     xtest = testing.cat %>% dplyr::select(-(tag_name)), 
+                                     ytest = testing.cat$tag_name, 
+                                     importance = TRUE, ntree = 300, type = "classification", mtry = 6, keep.forest = TRUE)
+
+plot(rf.cat)
+varImpPlot(rf.cat)
+rf.cat
+
+
+```
+
+
+```{r lezgo}
+
+pop_vals = dplyr::select(na.omit(val_predict),contains("Ind_"))
+pop_vals$maj <- colnames(pop_vals)[apply(pop_vals,1,which.max)]
+DT <- na.omit(val_predict) %>% mutate(pop_maj = pop_vals$maj) %>% dplyr::select(-c(contains("Ind_"),Ind,after_sunrise))
+
+set.seed(42)
+#----
+
+training_indices <- sample(nrow(DT),nrow(DT)*80/100)
+
+training <- DT[training_indices,] %>% dplyr::select(-c(socialtags_score))
+testing <- DT[-training_indices,] %>% dplyr::select(-c(socialtags_score))
+
+rf <- randomForest::randomForest(chat_percent ~ .,data = training, xtest = testing %>% dplyr::select(-(chat_percent)), ytest = testing %>% dplyr::pull((chat_percent)), importance = TRUE, ntree = 300)
+
+plot(rf)
+varImpPlot(rf)
+rf
+
+#----
+
+training_indices <- sample(nrow(DT),nrow(DT)*80/100)
+
+training <- DT[training_indices,] %>% dplyr::select(-c(chat_percent))
+testing <- DT[-training_indices,] %>% dplyr::select(-c(chat_percent))
+
+rf <- randomForest::randomForest(socialtags_score ~ .,data = training, xtest = testing %>% dplyr::select(-(socialtags_score)), ytest = testing %>% dplyr::pull((socialtags_score)), importance = TRUE, ntree = 300)
+
+plot(rf)
+varImpPlot(rf)
+rf
+
+#----
+DT.spatial <- DT %>% dplyr::select(-c(after_sunset))
+
+training_indices <- sample(nrow(DT.spatial),nrow(DT.spatial)*80/100)
+
+training.spatial <- DT.spatial[training_indices,]
+testing.spatial <- DT.spatial[-training_indices,]
+
+rf.spatial <- randomForest::randomForest(local_time ~ .,data = training.spatial, xtest = testing.spatial %>% dplyr::select(-(local_time)), ytest = testing.spatial %>% dplyr::pull((local_time)), importance = TRUE, ntree = 300)
+
+plot(rf.spatial)
+varImpPlot(rf.spatial)
+rf.spatial
+
+#----
+
+DT.simple <- DT %>% dplyr::select(c(local_time,after_sunset,month,celsius,wind,rain_mm,Men,rest,bars,shops,schools,chat_percent))
+
+training_indices <- sample(nrow(DT.simple),nrow(DT.simple)*80/100)
+
+training.simple <- DT.simple[training_indices,]
+testing.simple <- DT.simple[-training_indices,] 
+
+rf.simple <- randomForest::randomForest(chat_percent ~ .,data = training.simple, xtest = testing.simple %>% dplyr::select(-(chat_percent)), ytest = testing.simple %>% dplyr::pull((chat_percent)), importance = TRUE, ntree = 300)
+
+plot(rf.simple)
+varImpPlot(rf.simple)
+rf.simple
+
+#----
+
+DT.simple <- DT %>% dplyr::select(c(local_time,after_sunset,month,celsius,wind,rain_mm,Men,rest,bars,shops,schools,socialtags_score))
+
+training_indices <- sample(nrow(DT.simple),nrow(DT.simple)*80/100)
+
+training.simple <- DT.simple[training_indices,]
+testing.simple <- DT.simple[-training_indices,]
+
+rf.simple <- randomForest::randomForest(socialtags_score ~ .,data = training.simple, xtest = testing.simple %>% dplyr::select(-(socialtags_score)), ytest = testing.simple %>% dplyr::pull((socialtags_score)), importance = TRUE, ntree = 300, mtry = 6)
+
+plot(rf.simple)
+varImpPlot(rf.simple)
+rf.simple
+
+#----
+
+DT.cat <- DT %>% mutate(chat_on = case_when(
+  chat_percent > 0 ~TRUE,
+  chat_percent == 0 ~FALSE
+)) %>% dplyr::select(-c(chat_percent,socialtags_score)) %>% dplyr::select(c(local_time,after_sunset,celsius,wind,rain_mm,Men,rest,bars,shops,schools,chat_on))
+DT.cat$chat_on <- as.factor(DT.cat$chat_on) 
+# %>% dplyr::select(-chat_percent)
+# %>% dplyr::select(c(local_time,after_sunset,celsius,wind,Men,rest,chat_on))
+#%>% dplyr::select(c(local_time,after_sunset,celsius,wind,Men,rest,bars,shops,schools,chat_on))
+
+training_indices <- sample(nrow(DT.cat),nrow(DT.cat)*80/100)
+
+training.cat <- DT.cat[training_indices,]
+testing.cat <- DT.cat[-training_indices,]
+
+rf.cat <- randomForest::randomForest(x = training.cat %>% dplyr::select(-(chat_on)), y = training.cat$chat_on ,data = training.cat, xtest = testing.cat %>% dplyr::select(-(chat_on)), ytest = testing.cat$chat_on, importance = TRUE, ntree = 500, type = "classification", mtry = 6, keep.forest = TRUE)
+
+plot(rf.cat)
+varImpPlot(rf.cat)
+rf.cat
+
+#----
+
+DT.soc <- DT %>% mutate(social_on = case_when(
+  socialtags_score > 0 ~TRUE,
+  socialtags_score == 0 ~FALSE
+)) %>% dplyr::select(-c(chat_percent,socialtags_score))
+DT.soc$social_on <- as.factor(DT.soc$social_on)
+# %>% dplyr::select(-chat_percent)
+# %>% dplyr::select(c(local_time,after_sunset,celsius,wind,Men,rest,chat_on))
+#%>% dplyr::select(c(local_time,after_sunset,celsius,Men,rest,bars,shops,schools,chat_on))
+
+training_indices <- sample(nrow(DT.soc),nrow(DT.soc)*80/100)
+
+training.soc <- DT.soc[training_indices,]
+testing.soc <- DT.soc[-training_indices,]
+
+rf.soc <- randomForest::randomForest(x = training.soc %>% dplyr::select(-(social_on)), y = training.soc$social_on ,data = training.soc, xtest = testing.soc %>% dplyr::select(-(social_on)), ytest = testing.soc$social_on, importance = TRUE, ntree = 300, type = "classification", mtry = 6)
+
+plot(rf.soc)
+varImpPlot(rf.soc)
+rf.soc
+
+#----
+lat = 47.2149
+lon = -1.5551
+hour_point = 15
+date_point = "2019-07-14"
+wind = 10
+rain_mm = 0
+celsius = 25
+
+new_data = get_chat(lon,lat,hour_point,date_point,rain_mm,wind,celsius) %>% select(-c(lon,lat,geometry))
+#prediction_chat <- get_pred(model = rf.cat, new_data = new_data)
+prediction_chat <- predict(object = rf.cat, newdata = new_data, predict.all = TRUE, type = "prob")
+prediction_chat$aggregate
+
+#Validation rain----
+false_rf <- c()
+true_rf <- c()
+for(rain in 0:20){
+  new_data$rain_mm = rain
+  #prediction_chat <- get_pred(model = rf.cat, new_data = new_data)
+  prediction_chat <- predict(object = rf.cat, newdata = new_data, predict.all = TRUE, type = "prob")
+  false_rf <- append(false_rf,prediction_chat$aggregate[1])
+  true_rf <- append(true_rf,prediction_chat$aggregate[2])
+}
+
+plot(true_rf)
+ggplot() + geom_smooth(aes(x = c(0:20), y = true_rf), method = "gam", formula = y ~ s(x, bs = "cs"))
+
+#Validation wind----
+false_rf <- c()
+true_rf <- c()
+new_data$rain_mm = 0
+for(wind in 0:80){
+  new_data$wind <- wind
+  #prediction_chat <- get_pred(model = rf.cat, new_data = new_data)
+  prediction_chat <- predict(object = rf.cat, newdata = new_data, predict.all = TRUE, type = "prob")
+  false_rf <- append(false_rf,prediction_chat$aggregate[1])
+  true_rf <- append(true_rf,prediction_chat$aggregate[2])
+}
+ 
+plot(true_rf)
+ggplot() + geom_smooth(aes(x = c(0:80), y = true_rf), method = "gam", formula = y ~ s(x, bs = "cs"))
+
+
+#Validation hour----
+
+false_rf <- c()
+true_rf <- c()
+for(h in 0:23){
+  new_data$local_time <- h
+  new_data$after_sunrise
+  prediction_chat <- predict(object = rf.cat, newdata = new_data, predict.all = TRUE, type = "prob")
+  false_rf <- append(false_rf,prediction_chat$aggregate[1])
+  true_rf <- append(true_rf,prediction_chat$aggregate[2])
+}
+plot(true_rf)
+ggplot() + geom_smooth(aes(x = c(0:23), y = true_rf), method = "gam", formula = y ~ s(x, bs = "cs"))
+
+#----
+library(reshape2)
+melted_cormat <- melt(cor(training.simple %>% dplyr::select_if(is.numeric)))
+melted_cormat %>% dplyr::filter(Var1 == "chat_percent")
+
+library(ggplot2)
+ggplot(data = melted_cormat, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile()
+
+
+library(ade4)
+
+DT_ade <- DT.cat %>% dplyr::select_if(is.numeric)
+res_pca <- dudi.pca(DT_ade,scale = TRUE)
+
+library(factoextra)
+
+fviz_eig(res_pca)
+
+
+library(ROCR)
+#Faire DT.cat avec tag chat présent ou pas (catégoriel)
+set.seed(42)
+rfs <- randomForest::randomForest(x = DT.cat %>% dplyr::select(-(chat_on)), y = DT.cat$chat_on , importance = TRUE, ntree = 300)
+pred1=predict(rfs,type = "prob")
+perf = prediction(pred1[,2], DT$chat_on)
+# 1. Area under curve
+auc = performance(perf, "auc")
+auc
+# 2. True Positive and Negative Rate
+pred3 = performance(perf, "tpr","fpr")
+# 3. Plot the ROC curve
+plot(pred3,main="ROC Curve for Random Forest",col=2,lwd=2)
+abline(a=0,b=1,lwd=2,lty=2,col="gray")
+
+
+OOB.votes <- predict(rfs,x,type="prob")
+OOB.pred <- OOB.votes[,2]
+pred.obj <- prediction (OOB.pred,y)
+RP.perf <- performance(pred.obj, "rec","prec")
+plot (RP.perf)
+ROC.perf <- performance(pred.obj, "fpr","tpr")
+plot (ROC.perf)
+plot  (RP.perf@alpha.values[[1]],RP.perf@x.values[[1]])
+lines (RP.perf@alpha.values[[1]],RP.perf@y.values[[1]])
+lines (ROC.perf@alpha.values[[1]],ROC.perf@x.values[[1]])
+
+```
+
+
+
+
+```{r randomforest again}
+
+#tfsd----
+set.seed(42)
+DT <- clean_data_fr %>% dplyr::select(-c(Ind,after_sunrise,tag_name,tfsd_bird)) %>% na.omit()
+
+training_indices <- sample(nrow(DT),nrow(DT)*80/100)
+
+training <- DT[training_indices,]
+testing <- DT[-training_indices,]
+
+rf <- randomForest::randomForest(tfsd_chat ~ .,data = training, xtest = testing %>% dplyr::select(-(tfsd_chat)), ytest = testing %>% dplyr::pull((tfsd_chat)), importance = TRUE, ntree = 300)
+
+plot(rf)
+varImpPlot(rf)
+rf
+
+library(reshape2)
+melted_cormat <- melt(cor(training %>% dplyr::select_if(is.numeric)))
+melted_cormat %>% dplyr::filter(Var1 == "tfsd_chat")
+
+
+set.seed(42)
+DT <- clean_data_fr %>% dplyr::select(-c(Ind,after_sunset,tag_name,tfsd_chat)) %>% na.omit()
+
+training_indices <- sample(nrow(DT),nrow(DT)*80/100)
+
+training <- DT[training_indices,]
+testing <- DT[-training_indices,]
+
+rf <- randomForest::randomForest(tfsd_bird ~ .,data = training, xtest = testing %>% dplyr::select(-(tfsd_bird)), ytest = testing %>% dplyr::pull((tfsd_bird)), importance = TRUE, ntree = 300)
+
+plot(rf)
+varImpPlot(rf)
+rf
+
+library(reshape2)
+melted_cormat <- melt(cor(training %>% dplyr::select_if(is.numeric)))
+melted_cormat %>% dplyr::filter(Var1 == "tfsd_bird")
+
+#cat_chatting----
+DT.cat <- clean_data_fr %>% dplyr::select(-c(Ind,after_sunrise)) %>% na.omit()
+DT.cat$tag_name <- as.factor(DT.cat$tag_name)
+set.seed(42)
+
+training_indices <- sample(nrow(DT.cat),nrow(DT.cat)*80/100)
+
+training.cat <- DT.cat[training_indices,]
+testing.cat <- DT.cat[-training_indices,]
+
+rf.cat <- randomForest::randomForest(x = training.cat %>% dplyr::select(-(tag_name)), y = training.cat$tag_name ,data = training.cat, xtest = testing.cat %>% dplyr::select(-(tag_name)), ytest = testing.cat$tag_name, importance = TRUE, ntree = 300, type = "classification", keep.forest = TRUE)
+
+plot(rf.cat)
+varImpPlot(rf.cat)
+rf.cat
+
+
+```
+
+
+
+
+
+
+
+
+
+```{r comparaison}
+
+DT <- full_spatiotempo_fr %>% dplyr::select(-c(pleasantness)) %>% st_drop_geometry()
+DT$pop_maj <- as.factor(DT$pop_maj)
+DT$tag_name <- as.factor(DT$tag_name)
+DT$rain_mm[DT$rain_mm < 0] <- 0
+DT$month <- as.numeric(DT$month)
+
+DT.catshort <- DT %>% group_by(pk_track) %>% mutate(tag_chat = case_when(any(tag_name == "chatting") ~TRUE, TRUE ~FALSE)) %>% ungroup() %>% distinct(pk_track, .keep_all = TRUE) %>%
+  dplyr::select(-c(pk_track,tag_name,tfsd_bird,tfsd_chat,noise_level,after_sunrise,Ind)) %>%
+  dplyr::mutate(tag_chat = as.factor(tag_chat), local_time = as.numeric(local_time), after_sunset = as.numeric(after_sunset)) %>% 
+  mutate_if(is.logical,as.factor) %>% mutate(tag_chat = as.logical(tag_chat))
+
+set.seed(42)
+
+DTcl <- na.omit(DT.catshort) %>% dplyr::mutate(local_time = round(local_time), after_sunset = round(after_sunset), celsius = round(celsius), wind = round(wind))
+
+training_indices <- sample(nrow(DTcl),nrow(DTcl)*80/100)
+
+training <- DTcl[training_indices,]
+testing <- DTcl[-training_indices,]
+#GLM
+library(rpart)
+set.seed(42)
+tree <- glm(formula = tag_chat ~., data = training, family = binomial)
+pred <- predict(tree,testing, type = "link")
+table(sign(pred), testing$tag_chat)/nrow(testing)*100
+
+#DECISION TREE
+library(rpart)
+set.seed(42)
+tree <- rpart(formula = tag_chat ~., data = training)
+pred <- predict(tree,testing, type = "class")
+table(pred, testing$tag_chat)
+
+#RANDOMFOREST
+set.seed(42)
+rf.cat <- randomForest(tag_chat~., data = na.omit(training),importance = TRUE, proximity = TRUE)
+pred <- predict(rf.cat,testing, type = "class")
+table(pred, testing$tag_chat)/nrow(testing)*100
+
+plot(rf.cat)
+varImpPlot(rf.cat)
+rf.cat
+
+
+
+
+
+
+
+DT.catshort <- DT %>% group_by(pk_track) %>% mutate(tag_chat = case_when(any(tag_name == "chatting") ~TRUE, TRUE ~FALSE)) %>% ungroup() %>% distinct(pk_track, .keep_all = TRUE) %>% dplyr::select(-c(pk_track,tag_name,tfsd_bird,tfsd_chat,noise_level)) %>% dplyr::mutate(tag_chat = as.factor(tag_chat), local_time = as.numeric(local_time), after_sunrise = as.numeric(after_sunrise), after_sunset = as.numeric(after_sunset)) %>% mutate_if(is.logical,as.factor) %>% mutate(tag_chat = as.logical(tag_chat))
+
+set.seed(42)
+
+DTcl <- na.omit(DT.catshort) %>% dplyr::mutate(local_time = round(local_time), after_sunrise = round(after_sunrise), after_sunset = round(after_sunset), celsius = round(celsius), wind = round(wind))
+
+training_indices <- sample(nrow(DTcl),nrow(DTcl)*80/100)
+
+training <- DTcl[training_indices,]
+testing <- DTcl[-training_indices,]
+
+
+#GRADIENT BOOSTING REGRESSION
+library(gbm)
+
+# for reproducibility
+set.seed(42)
+
+# train GBM model
+gbm.fit2 <- gbm(
+  formula = tag_chat~.,
+  data = training,
+  n.trees = 2000,
+  interaction.depth = 3,
+  shrinkage = 0.1,
+  cv.folds = 5,
+  verbose = FALSE
+  )  
+# find index for n trees with minimum CV error
+min_MSE <- which.min(gbm.fit2$cv.error)
+
+# get MSE and compute RMSE
+RMSE <- sqrt(gbm.fit2$cv.error[min_MSE])
+RMSE
+
+# plot loss function as a result of n trees added to the ensemble
+gbm.perf(gbm.fit2, method = "cv")
+
+
+pred <- predict(gbm.fit2,testing, type = "link")
+table(sign(pred),testing$tag_chat)
+
+
+
+
+
+
+#LASSO
+
+# Compute R^2 from true and predicted values
+
+eval_results <- function(true, predicted, df) {
+  SSE <- sum((predicted - true)^2)
+  SST <- sum((true - mean(true))^2)
+  R_square <- 1 - SSE / SST
+  RMSE = sqrt(SSE/nrow(df))
+
+  # Model performance metrics
+data.frame(
+  RMSE = RMSE,
+  Rsquare = R_square
+)}
+
+
+set.seed(42) 
+
+index = sample(1:nrow(DTcl), 0.8*nrow(DTcl)) 
+
+train = DTcl[index,] # Create the training data 
+
+test = DTcl[-index,] # Create the test data
+
+
+lambdas <- 10^seq(2, -3, by = -.1)
+
+# Setting alpha = 1 implements lasso regression
+
+lasso_reg <- cv.glmnet(data.matrix(training), data.matrix(training$tag_chat), alpha = 1, lambda = lambdas, standardize = TRUE, nfolds = 5)
+
+# Best 
+
+lambda_best <- lasso_reg$lambda.min 
+lambda_best
+
+lasso_model <- glmnet(data.matrix(training %>% dplyr::select(-tag_chat)), data.matrix(training$tag_chat), family = binomial, alpha = 1, lambda = lambda_best, standardize = TRUE)
+
+
+p <- predict(lasso_model, s = lambda_best, newx = data.matrix(testing %>% dplyr::select(-tag_chat)))
+
+table(sign(p),testing$tag_chat)
+
+
+predictions_train <- predict(lasso_model, s = lambda_best, newx = data.matrix(training))
+
+eval_results(data.matrix(training$tag_chat), predictions_train, data.matrix(training))
+
+
+predictions_test <- predict(lasso_model, s = lambda_best, newx = data.matrix(testing))
+
+eval_results(data.matrix(testing$tag_chat), predictions_test, data.matrix(testing))
+
+
+
+#CHECK FOR MULTICOLLINEARITY
+
+library(tidyverse)
+library(caret)
+
+car::vif(tree)
+
+
+```
+
+```{r predict-map}
+
+df <- all_info_tempo %>% dplyr::filter(admin=="France") %>% dplyr::distinct(pk_track, .keep_all = TRUE) %>% dplyr::mutate(month = month(record_utc)) %>% dplyr::select(-c(ym))
+
+df_b <- st_transform(st_as_sf(df, coords =(c("lon","lat")), crs = 4326), crs = st_crs("EPSG:2154"))
+
+df_b$bars <- lengths(st_is_within_distance(df_b, bars_fr, dist = 250))
+df_b$schools <- lengths(st_is_within_distance(df_b, school_fr, dist = 250))
+df_b$rest <- lengths(st_is_within_distance(df_b, rest_fr, dist = 250))
+df_b$religion <- lengths(st_is_within_distance(df_b, religion_fr, dist = 250))
+df_b$tourism <- lengths(st_is_within_distance(df_b, tourism_fr, dist = 250))
+df_b$playgrounds <- lengths(st_is_within_distance(df_b, playgrounds_fr, dist = 250))
+df_b$shops <- lengths(st_is_within_distance(df_b, shops_fr, dist = 250))
+df_b$sport <- lengths(st_is_within_distance(df_b, sports_fr, dist = 250))
+df_b$trees <- lengths(st_is_within_distance(df_b, trees_fr, dist = 250))
+df_b$park <- lengths(st_within(df_b, parks_fr, dist = 250))
+
+df_c <- st_join(df_b,carroye)
+
+pop_vals <- dplyr::select(df_c %>% drop_na(Ind),c(contains(c("Ind_","pk","Men")))) %>% dplyr::select(-c(Ind_snv,Ind_inc)) %>% dplyr::select(-c(contains("Men_"))) %>% st_drop_geometry()
+pop_vals$pop_maj <- colnames(pop_vals)[apply(pop_vals %>% dplyr::select(-c(pk_track,Men)),1,which.max)]
+
+df_z <- inner_join(df_b,pop_vals)
+
+full_spatiotempo_fr <- df_z
+
+saveRDS(full_spatiotempo_fr,here::here("data","full_spatiotempo_fr2.rds"))
+
+full_spatiotempo_fr <- readRDS(here::here("data","full_spatiotempo_fr2.rds"))
+
+DT <- full_spatiotempo_fr %>% dplyr::select(-c(pleasantness,time_length)) %>% st_drop_geometry()
+DT$pop_maj <- as.factor(DT$pop_maj)
+DT$tag_name <- as.factor(DT$tag_name)
+DT$rain_mm[DT$rain_mm < 0] <- 0
+DT$month <- as.numeric(DT$month)
+
+DT.catshort <- DT %>% group_by(pk_track) %>% mutate(tag_chat = case_when(any(tag_name == "chatting") ~TRUE, TRUE ~FALSE)) %>% ungroup() %>% distinct(pk_track, .keep_all = TRUE) %>%
+  dplyr::select(-c(record_utc,season,iso_a2_eh,timezone_id,utc_format,tz_name1st,pk_track,tag_name,noise_level,after_sunrise,local_sunrise,sunrise_utc,hemisphere,sunset_utc,local_sunset,admin,contains("Ind_"))) %>%
+  dplyr::mutate(tag_chat = as.factor(tag_chat), lockdown = as.factor(unlist(lockdown)), local_time = round(as.numeric(local_time)), after_sunset = round(as.numeric(after_sunset)), celsius = round(celsius), wind = round(wind)) %>% 
+  mutate_if(is.logical,as.factor) #%>% mutate(tag_chat = as.logical(tag_chat))
+
+saveRDS(DT, here::here("data","DT.rds"))
+saveRDS(DT.catshort, here::here("data","DT_catshort.rds"))
+
+set.seed(42)
+
+DTcl <- na.omit(DT.catshort)
+
+training_indices <- sample(nrow(DTcl),nrow(DTcl)*80/100)
+
+training <- DTcl[training_indices,]
+testing <- DTcl[-training_indices,]
+
+saveRDS(training, here::here("data","training_chat.rds"))
+#RANDOMFOREST
+
+weights_chat <- ifelse(training$tag_chat == TRUE, 1.5, 1 )
+
+set.seed(42)
+
+rf.cat <- randomForest::randomForest(x = training %>% dplyr::select(-(tag_chat)), y = training$tag_chat ,data = training, xtest = testing %>% dplyr::select(-(tag_chat)), ytest = testing$tag_chat, importance = TRUE, ntree = 500, type = "classification", mtry = 6, keep.forest = TRUE,  weights = weights_chat)
+
+plot(rf.cat)
+varImpPlot(rf.cat)
+rf.cat
+
+saveRDS(rf.cat, here::here("data","rf_chat.rds"))
+
+#GLM
+library(rpart)
+set.seed(42)
+glm.tree <- glm(formula = tag_chat ~., data = training, family = binomial)
+
+# rf.cat <- randomForest(tag_chat~., data = training, importance = TRUE, proximity = TRUE)
+# pred <- predict(rf.cat,testing, type = "class")
+# table(sign(pred), testing$tag_chat)/nrow(testing)*100
+
+
+#---
+
+#Point's lon+lat middle city/zone of study
+center_lat = 47.2149
+center_lon = -1.5551
+distance_buffer <- 1000
+buffer_city <- st_buffer(st_transform(st_as_sf(data.frame(center_lon,center_lat), coords =(c("center_lon","center_lat")), crs = 4326), crs = st_crs("EPSG:2154")), dist = distance_buffer)
+
+grid_points_city <- st_make_grid(buffer_city, cellsize = 125, what = "centers")
+
+leaflet(st_transform(grid_points_city, crs = st_crs(4326))) %>% addProviderTiles(providers$CartoDB.Positron) %>% addCircleMarkers()
+
+#add spatial features
+
+city_pts <- st_as_sf(grid_points_city) %>% dplyr::mutate(pk_track = row_number())
+
+newdf_b <- city_pts
+
+newdf_b$bars <- lengths(st_is_within_distance(newdf_b, bars_fr, dist = 250))
+newdf_b$schools <- lengths(st_is_within_distance(newdf_b, school_fr, dist = 250))
+newdf_b$rest <- lengths(st_is_within_distance(newdf_b, rest_fr, dist = 250))
+newdf_b$religion <- lengths(st_is_within_distance(newdf_b, religion_fr, dist = 250))
+newdf_b$tourism <- lengths(st_is_within_distance(newdf_b, tourism_fr, dist = 250))
+newdf_b$playgrounds <- lengths(st_is_within_distance(newdf_b, playgrounds_fr, dist = 250))
+newdf_b$shops <- lengths(st_is_within_distance(newdf_b, shops_fr, dist = 250))
+newdf_b$sport <- lengths(st_is_within_distance(newdf_b, sports_fr, dist = 250))
+newdf_b$trees <- lengths(st_is_within_distance(newdf_b, trees_fr, dist = 250))
+newdf_b$park <- lengths(st_within(newdf_b, parks_fr, dist = 250))
+
+newdf_c <- st_join(newdf_b,carroye)
+
+pop_vals <- dplyr::select(newdf_c %>% drop_na(Ind),c(contains(c("Ind_","pk","Men")))) %>% dplyr::select(-c(Ind_snv,Ind_inc)) %>% dplyr::select(-c(contains("Men_"))) %>% st_drop_geometry()
+pop_vals$pop_maj <- colnames(pop_vals)[apply(pop_vals %>% dplyr::select(-c(pk_track,Men)),1,which.max)]
+
+newdf_z <- st_transform(inner_join(newdf_b,pop_vals),crs = st_crs(4326)) %>% dplyr::rename(n = pk_track)
+newdf_z$lon <- data.frame(st_coordinates(newdf_z))[1]
+newdf_z$lat <- data.frame(st_coordinates(newdf_z))[2]
+
+#add temporal features - A ameliorer (trop long 33min/256pts)
+
+date_point = "2019-07-21"
+
+new_temporal_attributes <- c()
+
+for(n in 1:length(grid_points_city)){
+  for(t in 1:24){
+    hour_point <- t
+    lon <- st_coordinates(st_transform(grid_points_city[n], crs = st_crs(4326)))[1]
+    lat <- st_coordinates(st_transform(grid_points_city[n], crs = st_crs(4326)))[2]
+    res <- get_temporal_attribute(lon,lat,hour_point,date_point)
+    res$t <- t
+    res$n <- n
+    new_temporal_attributes <- rbind(new_temporal_attributes,res)
+    
+  }
+  print(n*100/length(grid_points_city))
+}
+
+#predict 
+
+new_data_sptemp <- merge(newdf_z,new_temporal_attributes,by=c("n","lon","lat")) %>% na.omit 
+#new_data_sptemp <- merge(newdf_z,new_temporal_attributes, by.x = "pk_track", by.y = "n") %>% na.omit 
+
+
+new_data_filtered <- (new_data_sptemp) %>% 
+    dplyr::select(-c(geometry,contains(c("lon","lat")),t,n)) %>%
+  mutate_if(is.logical,as.factor) %>%
+  mutate_if(is.character,as.factor) %>%
+  as_tibble()
+  
+levels(new_data_filtered$week_end) <- levels(training$week_end)
+levels(new_data_filtered$ferie) <- levels(training$ferie)
+levels(new_data_filtered$lockdown) <- levels(training$lockdown)
+levels(new_data_filtered$park) <- levels(training$park)
+levels(new_data_filtered$pop_maj) <- levels(training$pop_maj)
+
+pred <- predict(object = rf.cat, newdata = (new_data_filtered), predict.all = TRUE, type = "prob")
+
+new_data_sptemp$pred <- data.frame(pred$aggregate)[,2]
+
+new_data_sptemp$date <- (paste0(date_point," ",ifelse(nchar(new_data_sptemp$t) == 2, as.character(new_data_sptemp$t), paste0("0",as.character(new_data_sptemp$t))),":00:00"))
+
+saveRDS(new_data_sptemp, here::here("data","new_data_sptemp.rds"))
+
+
+#Ecriture du SF en .shp pour lecture sous QGis
+shp_new_data <- st_write(st_as_sf(new_data_sptemp, coords = c("lon","lat")), here::here("data","new_points.shp"), delete_dsn = TRUE, overwrite = TRUE)
+
+
+```
+
+
+```{r paysage-sonore-nantais}
+
+data_nantes <- st_read(here::here("raw_data/nantes_psn","GeoAll.shp"))
+
+str(data_nantes)
+
+psn_pts <- st_transform(st_as_sf(data_nantes), crs = st_crs("EPSG:2154")) %>% dplyr::select(c(PK,geometry)) %>% dplyr::rename(pk_track = PK)
+
+psn_pts$bars <- lengths(st_is_within_distance(psn_pts, bars_fr, dist = 250))
+psn_pts$schools <- lengths(st_is_within_distance(psn_pts, school_fr, dist = 250))
+psn_pts$rest <- lengths(st_is_within_distance(psn_pts, rest_fr, dist = 250))
+psn_pts$religion <- lengths(st_is_within_distance(psn_pts, religion_fr, dist = 250))
+psn_pts$tourism <- lengths(st_is_within_distance(psn_pts, tourism_fr, dist = 250))
+psn_pts$playgrounds <- lengths(st_is_within_distance(psn_pts, playgrounds_fr, dist = 250))
+psn_pts$shops <- lengths(st_is_within_distance(psn_pts, shops_fr, dist = 250))
+psn_pts$sport <- lengths(st_is_within_distance(psn_pts, sports_fr, dist = 250))
+psn_pts$trees <- lengths(st_is_within_distance(psn_pts, trees_fr, dist = 250))
+psn_pts$park <- lengths(st_within(psn_pts, parks_fr, dist = 250))
+
+psn_pts_b <- st_join(psn_pts,carroye)
+
+pop_vals <- dplyr::select(psn_pts_b %>% drop_na(Ind),c(contains(c("Ind_","pk","Men")))) %>% dplyr::select(-c(Ind_snv,Ind_inc)) %>% dplyr::select(-c(contains("Men_"))) %>% st_drop_geometry()
+pop_vals$pop_maj <- colnames(pop_vals)[apply(pop_vals %>% dplyr::select(-c(pk_track,Men)),1,which.max)]
+
+psn_pts_z <- st_transform(inner_join(psn_pts,pop_vals),crs = st_crs(4326)) 
+psn_pts_z$lon <- data.frame(st_coordinates(psn_pts_z))[1]
+psn_pts_z$lat <- data.frame(st_coordinates(psn_pts_z))[2]
+psn_pts_z <- psn_pts_z %>% dplyr::mutate(id = row_number())
+
+#add temporal features - A ameliorer (trop long 33min/256pts)
+
+date_point = "2019-02-21"
+hour_point <- 15
+
+new_temporal_attributes <- c()
+
+for(n in 1:nrow(psn_pts_z)){
+  
+  lon <- st_coordinates(st_transform(psn_pts_z[n,], crs = st_crs(4326)))[1]
+  lat <- st_coordinates(st_transform(psn_pts_z[n,], crs = st_crs(4326)))[2]
+  res <- get_temporal_attribute(lon,lat,hour_point,date_point)
+  res$t <- hour_point
+
+  res$n <- n
+  new_temporal_attributes <- rbind(new_temporal_attributes,res)
+  
+  print(n*100/nrow(psn_pts_z))
+}
+
+psn_data_sptemp <- merge(psn_pts_z,new_temporal_attributes,by.y="n",by.x="id") %>% na.omit
+#new_data_sptemp <- merge(newdf_z,new_temporal_attributes, by.x = "pk_track", by.y = "n") %>% na.omit 
+
+psn_data_filtered <- (psn_data_sptemp) %>% 
+    dplyr::select(-c(geometry,contains(c("lon","lat")),t,id,pk_track)) %>%
+  mutate_if(is.logical,as.factor) %>%
+  mutate_if(is.character,as.factor) %>%
+  as_tibble()
+  
+levels(psn_data_filtered$week_end) <- levels(training$week_end)
+levels(psn_data_filtered$ferie) <- levels(training$ferie)
+levels(psn_data_filtered$lockdown) <- levels(training$lockdown)
+levels(psn_data_filtered$park) <- levels(training$park)
+levels(psn_data_filtered$pop_maj) <- levels(training$pop_maj)
+
+pred_psn <- predict(object = rf.cat, newdata = (psn_data_filtered), predict.all = TRUE, type = "prob")
+
+psn_data_sptemp$pred <- data.frame(pred_psn$aggregate)[,2]
+psn_data_sptemp$predglm <- predglm
+
+#Ecriture du SF en .shp pour lecture sous QGis
+st_write(st_as_sf(psn_data_sptemp, coords = c("lon","lat")), here::here("data","psn.shp"), delete_dsn = TRUE, overwrite = TRUE)
+
+data_nantes_full <- merge(data_nantes,psn_data_sptemp %>% st_drop_geometry(), by.x = "PK", by.y = "pk_track")
+
+```
+

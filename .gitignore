@@ -8,6 +8,13 @@
 *_cache
 synop.*.gz
 *.rds
+*.js
+*.css
 raw_data/**
+Untitled/**
+vignettes/*.log
+vignettes/*.aux
+vignettes/*.out
+vignettes/*.toc
+rsconnect/**
 vignettes/LM_temporal_analysis_article.Rmd
-vignettes/[Computing]Spatial_components.Rmd

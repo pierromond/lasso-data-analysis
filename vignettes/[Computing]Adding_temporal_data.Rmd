@@ -45,23 +45,15 @@ if(!exists("all_info_sun")){
 
 ```
 
-```{r figures-caption-tempo, include=FALSE}
-
-# Declare variables for figures and table counting
-if(!exists("fig_nums")){
-fig_nums <- captioner::captioner(prefix = "Figure")
-}
-fig_nums("tempo", "Proportion of tags by type of day", display = FALSE)
-
-```
-
 ```{r temporal-data, include = FALSE}
 
 day_off_world <- data.frame(matrix(ncol = 9))
 colnames(day_off_world) <- c("date","localName","name","countryCode","fixed","global","counties","launchYear","type")
+
 get_public_holiday <- function(y,code){
   jsonlite::fromJSON(paste("https://date.nager.at/api/v2/publicholidays/",y,"/",code,sep=""))
 }
+
 available_country <- jsonlite::fromJSON("https://date.nager.at/api/v3/AvailableCountries")
 
 start_year <- min(year(all_info_sun$record_utc))
@@ -86,21 +78,21 @@ for(y in start_year:end_year){
 }
 
 #Jours fériés pour tous les pays / World
-day_info <- all_info_sun %>% dplyr::select(pk_track,tag_name,admin,iso_a2_eh,season,local_date ) %>% 
+day_info <- all_info_sun %>% dplyr::select(pk_track,tag_name,admin,iso_a2_eh,season,record_utc) %>% 
   mutate(week_end = case_when(
-  chron::is.weekend(local_date) ~ TRUE,
+  chron::is.weekend(record_utc) ~ TRUE,
   TRUE ~ FALSE
 ))
 
 dayoff_info <- data.frame(matrix(ncol = ncol(day_info)+1))
 colnames(dayoff_info) <- c(colnames(day_info),"ferie")
-dayoff_info$local_date <- as_datetime(dayoff_info$local_date)
+dayoff_info$record_utc <- as_datetime(dayoff_info$record_utc)
 
 for(c in unique(day_info$iso_a2_eh)){
   day_info_country <- day_info %>% filter(iso_a2_eh == c)
   day_off_country <- day_off_world %>% filter(countryCode == c)
   dayoff_info_country <- day_info_country %>% mutate(ferie = case_when(
-  as.Date(local_date) %in% as.Date(day_off_country$date) ~ TRUE,
+  as.Date(record_utc) %in% as.Date(day_off_country$date) ~ TRUE,
   TRUE ~FALSE
   ))
   dayoff_info <- rbind(dayoff_info,dayoff_info_country)
@@ -185,11 +177,13 @@ is_lockdown <- function(d){
   }
 }
 
-dayoff_info_fr$lockdown <- lapply(dayoff_info_fr$local_date, is_lockdown)
+dayoff_info_fr$lockdown <- lapply(dayoff_info_fr$record_utc, is_lockdown)
 
 dayoff_info <- left_join(dayoff_info,dayoff_info_fr)
 
-all_info_tempo <- left_join(all_info_sun,dayoff_info)
+saveRDS(dayoff_info, here::here("data","dayoff_info.rds"))
+
+all_info_tempo <- inner_join(all_info_sun,dayoff_info)
 
 saveRDS(all_info_tempo,here::here("data","all_info_tempo.rds"))
 saveRDS(df_tags_day_type,here::here("data","df_tags_day_type.rds"))

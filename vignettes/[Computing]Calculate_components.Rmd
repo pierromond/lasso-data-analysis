@@ -31,6 +31,19 @@ if(!dir.exists(here("raw_data"))){
 
 ```
 
+```{r con-parameters, include = FALSE}
+drv <- DBI::dbDriver("PostgreSQL")
+con <- DBI::dbConnect(
+drv,
+dbname ="noisecapture",
+host = "lassopg.ifsttar.fr", #server IP or hostname
+port = 5432, #Port on which we ran the proxy
+user="noisecapture",
+password= Sys.getenv('noisecapture_password') # password stored in .Renviron. Use this to edit it : usethis::edit_r_environ()
+)
+
+```
+
 ```{r setup-calculate-component, include = FALSE}
 #Download Metropolitain France's geometry
 if(!exists("france_metro")){
@@ -41,6 +54,17 @@ if(!exists("france_metro")){
   }
   else{
   france_metro <- geojson_sf(here::here("raw_data","2020_France_metro_WGS84.geojson"))
+  }
+}
+
+if(!exists("clean_track_info")){
+  if(!file.exists(here::here("data","clean_track_info.rds"))){
+    URL_cltrack <- "https://github.com/nicolas-roelandt/lasso-data-analysis/raw/main/raw_data/2020_France_metro_WGS84.geojson"
+    clean_track_info <- geojson_sf(URL_cltrack)
+    saveRDS(clean_track_info,here::here("data","clean_track_info.rds"))
+  }
+  else{
+  clean_track_info <- readRDS(here::here("data","clean_track_info.rds"))
   }
 }
 
@@ -109,20 +133,7 @@ tag_info <- RPostgreSQL::dbGetQuery(con,statement = query) %>% dplyr::filter(pk_
 
 all_info <- tag_info %>% 
   dplyr::inner_join(
-    full_info %>% filter(!is.na(tz_name1st)) %>% sf::st_drop_geometry()) %>%
-  # add local time
-  dplyr::mutate(local_time = (lubridate::local_time(lubridate::ymd_hms(record_utc, tz = "UTC"),tz_name1st, units="hours"))) # target timezone
-
-#> Based on the local hour calculated and the UTC time given by the application's data, 
-#> we can determine the real date of the record. 
-#> For instance, a record located in New-York with UTC at 01:00 on tuesday 02/05,
-#> would actually have taken place at a local date of 21:00 monday 01/05
-
-all_info <- all_info %>% mutate(local_date = case_when(
-  ymd(substr(ymd_hms(record_utc) + hm(utc_format),1,10)) == ymd(substr(record_utc,1,10)) ~ ymd_hms((paste(substr(record_utc,1,10),"00:00:00"))) + local_time,
-  ymd(substr(ymd_hms(record_utc) + hm(utc_format),1,10)) < ymd(substr(record_utc,1,10)) ~ ymd_hms((paste(substr(record_utc,1,10),"00:00:00"))) - 86400 + local_time,
-    ymd(substr(ymd_hms(record_utc) + hm(utc_format),1,10)) > ymd(substr(record_utc,1,10)) ~ ymd_hms((paste(substr(record_utc,1,10),"00:00:00"))) + 86400 + local_time
-))
+    full_info %>% filter(!is.na(tz_name1st)) %>% sf::st_drop_geometry())
 
 all_info$lon <- as.numeric(all_info$lon)
 all_info$lat <- as.numeric(all_info$lat)
@@ -175,7 +186,7 @@ all_info <- all_info %>%
   ))
 
 
-#saveRDS(all_info, here("data","all_info.rds"))
+saveRDS(all_info, here::here("data","all_info.rds"))
 ```
 
 ```{r compute-sunrise, include = FALSE, cache= TRUE}
@@ -244,7 +255,7 @@ sun_info <- inner_join(sunrises,sunsets)
 ```{r time-after-sunrise, include = FALSE}
 # join sun_info to study data
 
-all_info_sun <- left_join(all_info, sun_info)
+all_info_sun <- left_join(all_info, sun_info)  %>% dplyr::mutate(local_time = lubridate::hour(record_utc) + lubridate::minute(record_utc)/60)
 
 # Mutating hours to fit in a 12h window around the sunrise or sunset
 all_info_sun <- 
@@ -259,5 +270,6 @@ all_info_sun <-
   TRUE ~ local_time - local_sunset))
 
 
-#saveRDS(all_info_sun, file = "vignettes/all_info_sun.rds")
+
+saveRDS(all_info_sun, here::here("data","all_info_sun.rds"))
 ```

@@ -134,5 +134,10 @@ list_lat <- append(list_lat,
 
 clean_track_info$lon <- list_lon
 clean_track_info$lat <- list_lat
+
+
+clean_track_info <- clean_track_info %>% dplyr::filter(between(lat, -90, 90) & between(lon,-180,180))
+
+saveRDS(clean_track_info, here::here("data","clean_track_info.rds"))
 ```
 

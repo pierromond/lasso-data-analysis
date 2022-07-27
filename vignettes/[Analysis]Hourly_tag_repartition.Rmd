@@ -21,7 +21,8 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(captioner)
-
+library(ltxplot)
+load_theme_ltx()
 ```
 
 ```{r figures-caption-hours, include=FALSE}
@@ -46,14 +47,14 @@ if(!dir.exists(here("data"))){
   dir.create(here("data"))
 }
 
-if(!exists("all_info")){
-  if(!file.exists(here("data","all_info.rds"))){
-    URL <- "https://zenodo.org/record/6536129/files/all_info.rds?download=1"
-    all_info <- readRDS(url(URL))
-    saveRDS(all_info,here("data","all_info.rds"))
+if(!exists("all_info_tempo")){
+  if(!file.exists(here("data","all_info_tempo.rds"))){
+    URL <- "https://zenodo.org/record/6536129/files/all_info_tempo.rds?download=1"
+    all_info_tempo <- readRDS(url(URL))
+    saveRDS(all_info_tempo,here("data","all_info_tempo.rds"))
   }
   else{
-  all_info <- readRDS(here("data","all_info.rds"))
+  all_info_tempo <- readRDS(here("data","all_info_tempo.rds"))
   }
 }
 
@@ -63,11 +64,11 @@ if(!exists("all_info")){
 #Calculate proportion of tags per country and per hour
 #Hours are rounded via round() function
 
-occurences <- all_info %>% dplyr::group_by(tag_name, admin, local_time = as.numeric(round(local_time))) %>% dplyr::count(name = "track_occurences")
+occurences <- all_info_tempo %>% dplyr::group_by(tag_name, admin, local_time = as.numeric(round(local_time))) %>% dplyr::count(name = "track_occurences")
 
 occurences["local_time"][occurences["local_time"] == 0] <- 24
 
-occurences <- all_info %>% dplyr::group_by(tag_name, admin, local_time = as.numeric(floor(local_time))) %>% dplyr::count(name = "track_occurences")
+occurences <- all_info_tempo %>% dplyr::group_by(tag_name, admin, local_time = as.numeric(floor(local_time))) %>% dplyr::count(name = "track_occurences")
 
 ```
 
@@ -82,11 +83,11 @@ tags_hourly_repartition <- tags_hourly_repartition %>% dplyr::group_by(local_tim
 
 ```
 
-```{r hourly-tags-fr, echo= FALSE, fig.align='center', out.width="80%", message = FALSE, fig.cap=fig_nums("hour-fr")}
+```{r hourly-tags-fr, echo= FALSE, fig.align='center', out.width="90%", message = FALSE, fig.cap=fig_nums("hour-fr")}
 
 ggplot(tags_hourly_repartition %>% dplyr::filter(admin == "France")) +
   aes(x = local_time, y = percentage) +
-  geom_col() + geom_smooth(method = "loess", se = FALSE, color = "blue") +
+  geom_col() +
   labs(
     x = "Local hour",
     y = "Proportion of tag per hour",
@@ -94,26 +95,30 @@ ggplot(tags_hourly_repartition %>% dplyr::filter(admin == "France")) +
     subtitle = "Noicecaptures tags in France,
     2017 - 2020"
   ) +
-  scale_x_continuous(breaks = c(0,6,12,18,23))+
+  scale_x_continuous(breaks = seq(from = 0, to = 23, by = 3)) +
+  theme_latex(font = "lmroman", base_size = 16)+
   facet_wrap(vars(tag_name), scales = "free_y")
+
 
 #loess graph by stats::loess(percentage ~ local_time, data = tags_hourly_repartition %>% filter(admin == "France"))
 
 #ggsave(here("plots","tags_hourly_repartition_France.png"), width = 20, height = 10) 
 ```
 
-```{r hourly-tag-road, echo= FALSE, fig.align='center', out.width="80%", message = FALSE, fig.cap=fig_nums("hour-fr-road")}
+```{r hourly-tag-road, echo= FALSE, fig.align='center', out.width="90%", message = FALSE, fig.cap=fig_nums("hour-fr-road")}
 
 ggplot(tags_hourly_repartition %>% filter(admin == "France" & tag_name == "road")) +
   aes(x = local_time, y = percentage) +
   geom_col() + geom_smooth(method = "gam", se = FALSE, color = "blue") +
   labs(
     x = "Local time (hours)",
-    y = "Proportion of tag per hour",
+    y = "Proportion of tag per hour (%)",
     title = "Hourly repartition of road tags",
     subtitle = "Noicecaptures tags in France,
     2017 - 2020"
   ) +
-  scale_x_continuous(breaks = seq(from = 0, to = 24, by = 3))
+  scale_x_continuous(breaks = seq(from = 0, to = 23, by = 3)) +
+  theme_latex(font = "lmroman", base_size = 24)
+
 
 ```

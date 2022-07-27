@@ -28,6 +28,9 @@ library(ggplot2)
 # handle figures and tables numbering
 library(captioner)
 
+library(ltxplot)
+load_theme_ltx()
+
 ```
 
 ```{r figures-caption-databases, include=FALSE}
@@ -85,14 +88,15 @@ ggplot(count_tracks) +
     title = "Repartition of tracks by local hour",
     subtitle = "Noisecapture's data,
       2017-2020"
-  )
+  ) +
+  theme_latex(font = "lmroman", base_size = 22)
   #facet_wrap(vars(admin))
 
 ```
 
 The graph above shows us the temporal distribution of the data on a 24h scale. It appears obvious that the use of the application follows the hours of human activity.
 
-As mentioned earlier, the measurements can be divided into two categories, the tracks with tags indicating the nature of the noise recorded (animals, roads etc.) and those without tags. We want to know the distribution of use of this feature.
+As mentioned earlier, the measurements can be divided into two categories, the tracks with tags indicating the nature of the noise recorded (animals, roads, etc.) and those without tags. We want to know the distribution of use of this feature.
 
 ```{r analysis-sql2, echo=FALSE, fig.align='center', out.width="80%", message = FALSE,fig.cap= fig_nums("sql2")}
 
@@ -110,7 +114,8 @@ ggplot(count_tags) +
     title = "Repartition of tagged tracks by local hour",
     subtitle = "Noisecapture's data,
       2017-2020"
-  ) 
+  )  +
+  theme_latex(font = "lmroman", base_size = 22)
   #facet_wrap(vars(admin))
 
 ```
@@ -136,7 +141,8 @@ ggplot(df_test) +
     title = "Percentage of tagged tracks by local hour",
     subtitle = "Noisecapture's data,
       2017-2020"
-  ) 
+  )  +
+  theme_latex(font = "lmroman", base_size = 22)
 
 ```
 
