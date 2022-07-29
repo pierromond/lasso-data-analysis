@@ -64,11 +64,8 @@ if(!exists("all_info_tempo")){
 #Calculate proportion of tags per country and per hour
 #Hours are rounded via round() function
 
-occurences <- all_info_tempo %>% dplyr::group_by(tag_name, admin, local_time = as.numeric(round(local_time))) %>% dplyr::count(name = "track_occurences")
-
-occurences["local_time"][occurences["local_time"] == 0] <- 24
-
 occurences <- all_info_tempo %>% dplyr::group_by(tag_name, admin, local_time = as.numeric(floor(local_time))) %>% dplyr::count(name = "track_occurences")
+
 
 ```
 

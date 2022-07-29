@@ -151,7 +151,7 @@ Les packages utilisés lors de cette étude sont les suivants :
 
 * **lubridate** : pour la gestion des dates et heures, notamment les conversions d'heure par fuseau horaire
 * **sf** : pour la gestion et transformation/projection des données géographiques 
-* 
+* **dplyr** : pour la gestion des données structurées (dataframes) et en général pour les processus de traitement
 * 
 * 
 * 
@@ -234,11 +234,9 @@ Afin de déterminer les données supplémentaires nécessaires, notamment au niv
 
 ## Données temporelles
 
-Chaque trace possède une date, mais celle-ci est exprimée sur le fuseau horaire UTC. Il est donc primordial de calculer une heure et date locale afin de pouvoir calculer correctement la répartition horaire des tags dans chaque pays ou région du monde.
+Chaque trace possède une date, exprimée selon le fuseau horaire locale de l'enregistrement.
 
-Afin de connaître cette heure locale, il est possible de croiser les coordonnées GPS de chaque trace avec des polygones définissant les contours des fuseaux horaires mondiaux.
-
-Ensuite, des données telles que le pays de la mesure ainsi que la saison, se calculent très facilement en fonction de la position GPS et de la date. Ci-dessous un exemple de fonction permettant l'acquisition d'une variable supplémentaire, ici les saisons :
+Des données telles que le pays de la mesure ainsi que la saison, se calculent très facilement en fonction de la position GPS et de la date. Ci-dessous un exemple de fonction permettant l'acquisition d'une variable supplémentaire par simple calculs, ici les saisons :
 
 ```{r code-season, echo = TRUE, eval = FALSE}
 #Fonction permettant de calculer les saisons
@@ -398,10 +396,11 @@ knitr::include_graphics("plots/france_hourly_tags.png")
 ```
 
 Ces courbes nous permettent d'observer des pics d'activité humaine, notamment les heures de pointe du matin et du soir pour les déplacements domicile-travail.
-La figure \@ref(fig:fig-road) montre la répartition d'utilisation horaire du tag "route", dans laquelle nous pouvons observer des pics à 9h00-10h00 et à 20h00-21h00.
+La figure \@ref(fig:fig-road) montre la répartition d'utilisation horaire du tag "route", dans laquelle nous pouvons observer des pics à 07h00-09h00 et à 19h00-20h00.
 Une étude précédente sur les habitudes de déplacement à partir des données des cartes à puce à Beijing (Chine), 
 @MA2017135 a trouvé des heures de pointe à 7h00-9h00 et à 17h00-19h00.
-Ce décalage peut être dû à plusieurs raisons que nous n'avons pas explorées : différence culturelle entre la Chine et la France, mobilité différente, etc. culturelle entre la Chine et la France, pratiques de mobilité différentes (carte à puce pour les données de transport public versus données de bruit routier), différents types de zones d'étude (métropole de Pékin et France métropolitaine). Il est toujours important de retenir que notre graphique donne la répartition de l'utilisation de tags et peut donc être influencé par le niveau d'audibilité de certains sons par exemple. Il en ressort tout de même une dynamique similaire avec les pics de circulation, qui qualifie donc au minimum ce tag comme étant pertinemment utilisé par la communauté.
+Il est dont apparent que les dynamiques routières semblent similaires entre cette étude et la nôtre. Cette similarité nous encourage dans une qualification positive de l'utilisation de l'application NoiseCapture par les utilisateurs.
+Ce décalage peut être dû à plusieurs raisons que nous n'avons pas explorées : différence culturelle entre la Chine et la France, pratiques de mobilité différentes (carte à puce pour les données de transport public contre les données de bruit routier), différents types de zones d'étude (métropole de Pékin et France métropolitaine). Il est également toujours important de retenir que notre graphique donne la répartition de l'utilisation de tags et peut donc être influencé par le niveau d'audibilité de certains sons par exemple, ce qui pourrait également influencer notre léger décalage temporel pour le pic .
 
 ```{r fig-road, fig.cap = "Répartition horaire du tag 'route' en France Métropolitaine", fig.align='center', fig.pos="H", echo=FALSE, out.width="90%"}
 knitr::include_graphics("plots/tags_heures_france_road.png")
@@ -422,7 +421,7 @@ Pour étayer cette hypothèse sur les sorties et activités sociales pouvant aug
 knitr::include_graphics("plots/days_types_tags.png")
 ```
 
-Il semble en effet visible dans la figure \@ref(fig:fig-days) qu'une augmentation des tags "discussion" et "musique" soit amenée par la présence d'un jour férié ou par une fin de semaine. Les augmentations sur les même dates des tags tels que "végétations" et "animaux" peut amener à penser que les utilisateurs se trouvent être plus fréquemment dans des environnements naturels, tels que des parcs, lors de ces jours de détente.
+Il semble en effet visible dans la figure \@ref(fig:fig-days) qu'une augmentation des tags "discussion" (*chatting*) et "musique" (*music*) soit amenée par la présence d'un jour férié ou par une fin de semaine. Les augmentations sur les même dates des tags tels que "végétations" et "animaux" peuvent amener à penser que les utilisateurs se trouvent être plus fréquemment dans des environnements naturels, tels que des parcs, lors de ces jours de détente, et nous encouragent dans la validation de la cohérence de notre base de donnée de NoiseCApture.
 
 Ces analyses descriptives encouragent à explorer plus en profondeur les liens entre certains tags et l'environnement réel des usagers.
 
@@ -451,36 +450,26 @@ Il apparaît suite à ces études que les tags semblent pouvoir servir de base s
 
 Une première analyse intéressante est d'observer si certaines de nos variables prédictives se trouvent être directement corrélées avec la présence de certains tags, permettant une première estimation des variables utiles et des dynamiques.
 
-```{r fig-corrplot, fig.cap= "Matrice de correlation", fig.pos="H", fig.align='center', echo=FALSE, out.width="90%"}
-knitr::include_graphics("plots/full_corrplot.png")
-```
+Il est possible de voir dans la figure \@ref(fig:fig-corrplot) (située en [Annexe 2][Annexe 2 - Corrélations]) les corrélations entre chaque variable de notre jeu de données selon l'échelle de couleur à droite. Ainsi, pour la présence de tag "discussion" (*chatting*), il apparaît qu'une corrélation négative plutôt marquée existe entre elle et la présence de tag "route" (*road*).
 
-Il est possible de voir dans la figure \@ref(fig:fig-corrplot) les corrélations entre chaque variable de notre jeu de données selon l'échelle de couleur à droite. Ainsi, pour la présence de tag "discussion" (*chatting*), il apparaît qu'une corrélation négative plutôt marquée existe entre elle et la présence de tag "route" (*road*).
+La corrélation entre la présence du tag_chatting et la présence du tag_road est de **`r round(as.numeric((cor.test(DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(road),DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(chatting)))$estimate),3)`** avec une p-value de **`r (cor.test(DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(road),DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(chatting)))$p.value`**.
 
-Corrélation tag_chatting/tag_road :
-**`r round(as.numeric((cor.test(DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(road),DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(chatting)))$estimate),3)`** ;
-P-Value : 
-**`r (cor.test(DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(road),DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(chatting)))$p.value`**  
-
-Cette corrélation négative signifie une dynamique opposée entre les deux variables.
+Cette corrélation négative signifie une dynamique opposée entre les deux variables. Une première interprétation de ce résultat est que lorsque l'un de ces deux types d'environnement est audible et identifiable par l'utilisateur, le second serait donc masqué par le premier et moins souvent identifiable par l'utilisateur. Une autre interprétation possible, peut-être complémentaire, est que les environnements où ces deux types de sons sont audibles sont des environnements distincts/opposés, ainsi les zones 
 
 En ce concentrant toujours autour du tag "discussion" (*chatting*), il est possible d'observer une nette corrélation positive entre la présence du tag et la présence de restaurants (*rest*) ou de commerces (*shops*).
 
-Corrélation tag_chatting/nombre_restaurants :
-**`r round(as.numeric((cor.test(DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(rest),DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(chatting)))$estimate),3)`** ;
-P-Value : 
-**`r (cor.test(DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(road),DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(chatting)))$p.value`**  
+La corrélation entre la présence de tag_chatting et le nombre_restaurants est de **`r round(as.numeric((cor.test(DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(rest),DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(chatting)))$estimate),3)`** avec une p-value de **`r (cor.test(DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(road),DT %>% mutate(value = 1)  %>% spread(tag_name, value,  fill = 0) %>% pull(chatting)))$p.value`**.
 
-Ces valeurs de corrélations nous permettent d'estimer statistiquement les meilleures variables prédictives si un travail de réduction de dimension était à prévoir par exemple, tout en nous donnant une idée des variables les plus déterminantes pour la création d'un modèle de prédiction de l'utilisation des tags. 
+Ces valeurs de corrélations nous permettent d'estimer statistiquement les meilleures variables prédictives pour un travail de réduction de dimension par exemple, tout en nous donnant une idée des variables les plus déterminantes pour la création d'un modèle de prédiction de l'utilisation des tags. 
 
 ### Modèle de prédiction
 
 Cette partie se concentrera sur la réalisation d'un modèle de présence de sources sonores en se basant sur les tags de nos données. La donnée nous intéressant le plus dans ce travail de stage est la présence du tag "discussion".
 
-Pour cela, il est possible de réaliser l'apprentissage du tableau de données complète à l'aide d'un outil de machine learning appelé un *Random Forest*. Cet algorithme permet de créer un arbre de décision pour la classification d'une donnée de sortie (variable dépendante) en fonctions d'autres variables prédictives. Le Random Forest est ici utilisé pour la détermination de présence ou d'absence du tag "discussion".
+Pour cela, il est possible de réaliser l'apprentissage du tableau de données complète à l'aide d'un outil de machine learning appelé un *Random Forest*. L'algorithme effectue un apprentissage sur de multiples arbres de décision entraînés sur des sous-ensembles de données légèrement différents. Il est utilisé notamment pour la classification d'une donnée de sortie (variable dépendante) en fonctions d'autres variables prédictives numériques ou catégorielles. Le Random Forest est ici utilisé pour la détermination de présence ou d'absence du tag "discussion" (*chatting*).
 
-Le Random Forest est entraîné sur un jeu d'entrainement correspond à 80% aléatoire du jeu de données complet, afin de pouvoir créer une matrice de confusion sur le jeu de test correspondant aux 20% restants.
-Cette matrice de confusion permet d'évaluer la précision de la classification de notre modèle.
+Le Random Forest est entraîné sur un jeu d'entrainement correspondant à 80% aléatoire du jeu de données complet, afin de pouvoir créer une matrice de confusion sur le jeu de test correspondant aux 20% restants.
+Cette matrice de confusion ci-dessous permet d'évaluer la précision de la classification de notre modèle. Les données en colonnes représentent la variable attendue, tandis que les données en lignes représentent la prédiction de la variable par le modèle. Ainsi, une 
 
 ```{r fig-rfconf, echo=FALSE}
 
@@ -504,24 +493,51 @@ Afin de tester notre modèle, une grille de points sur la ville de Nantes est cr
 
 Les résultats de cette prédiction sont visualisés sous le logiciel QGis.
 
-```{r fig-1h, fig.cap= "Cartographie de prédiction de présence du tag 'chatting' à 01h", fig.pos="H", fig.align='center', echo=FALSE, out.width="90%"}
-knitr::include_graphics("plots/legend_01.png")
+```{r fig-1h, fig.cap= "Cartographie de probabilité de présence du tag 'chatting' à 01h (classée par déciles)", fig.pos="H", fig.align='center', echo=FALSE, out.width="49%", fig.show='hold'}
+knitr::include_graphics(c("plots/legend_01.png","plots/legend_07.png"))
 ```
 
 La figure \@ref(fig:fig-1h) montre une dynamique proche de celle attendue pour un horaire à 01h, avec une concentration de la probabilité forte de présence de tag "discussion" dans l'hyper-centre, dans le quartier des bars et établissements nocturnes.
+
+```{r fig-7h, fig.cap= "Cartographie de probabilité de présence du tag 'chatting' à 01h (classée par déciles)", fig.pos="H", fig.align='center', echo=FALSE, out.width="90%"}
+knitr::include_graphics("plots/legend_07.png")
+```
+
+```{r fig-18h, fig.cap= "Cartographie de probabilité de présence du tag 'chatting' à 01h (classée par déciles)", fig.pos="H", fig.align='center', echo=FALSE, out.width="90%"}
+knitr::include_graphics("plots/legend_18.png")
+```
+
+```{r fig-22h, fig.cap= "Cartographie de probabilité de présence du tag 'chatting' à 01h (classée par déciles)", fig.pos="H", fig.align='center', echo=FALSE, out.width="90%"}
+knitr::include_graphics("plots/legend_22.png")
+```
+
+
 
 \newpage
 
 # Conclusion
 
+Les analyses descriptives de nos données de l'application 
+
+Les résultats de notre approche de prédiction de présence de tags caractérisant les sources sonores correspondent à nos attentes par rapport à nos connaissances et études de la bibliographie. De plus amples vérifications sont à prévoir, mais une première estimation de la justesse de nos résultats par rapport à des relevés empiriques sur la ville de Nantes nous indique une corrélation positive significative entre nos prédictions et la réalité, ce qui nous encourage encore à développer et affiner ce modèle afin de l'utiliser dans de futurs projets d'études.
+
+La reproductibilité engagée de notre travail s'est avéré être particulièrement pratique pour le partage de mes scripts, mais également pour leur modification et leur correction. Pour donner un exemple concret, un doute nous est apparu très tard dans le stage par rapport à l'un des résultats de mon rapport. En effet, les dynamiques horaires, notamment routières, semblaient toutes décalées de 2h par rapport à la bibliographie et nos connaissances du terrain. Après vérification, une imprécision dans la documentation de l'application NoiseCapture nous avait amené à considérer l'heure d'enregistrement de la trace comme étant au format UTC, qu'il nous incombait donc de convertir en heure locale. Nous avons réalisé après plus ample vérification que le format était déjà converti au format d'horaire local, et qu'il nous fallait donc modifier une grande partie de notre script pour refléter cette modification de la donnée. Cependant, un tel travail fut rendu trivial par la compartimentation et la reproductibilité de notre travail, qui à permis de mettre à jour l'ensemble des graphiques, résultats et textes automatisés de ce rapport en une vingtaine de minute seulement.
 
 \newpage
 
 # Discussion / Ouverture
 
-Il serait possible dans une future reprise des données de conserver les traces entières à la place des centroïdes des traces, à condition de modifier quelques fonctions de croisement de données géographiques. La conservation des traces entière permettrait notamment de meilleures estimations des différents environnements sonores et spatiaux traversés par l'utilisateur pendant l'enregistrement.
+Il serait possible dans une future reprise des données de conserver les traces entières à la place des centroïdes des traces, à condition de modifier quelques fonctions de croisement de données géographiques. La conservation des traces entières permettrait notamment de meilleures estimations des différents environnements sonores et spatiaux traversés par l'utilisateur pendant l'enregistrement, mais le choix de l'heure de départ ou de fin de mesure serait à prendre en compte pour tous les calculs temporels, ce qui rendrait les traitements plus complexes.
+
+Une amélioration du script d'ajout de variables temporelles, pour le travail de prédiction des nouveaux points, est à prévoir. En effet, Pour 256 points, sur 24 heures (soit 6144 entrées), l'ajout des variables temporelles, utilisant une boucle sur les données, dure environ 30min, contre 3min pour l'ajout des données spatiales (limitées à 256 entrées car sans différence horaire) car le processus est vectorisé. Une réduction du temps de calcul très importante est donc possible, ce qui permettrait de générer de plus grandes surfaces de prédiction ou une grille de points plus dense et précise.
+
+L'algorithme utilisé pour la prédiction, le Random Forest, pourrait sans doute être optimisé grâce au jeu sur les hyper-paramètres. Il faudrait par exemple réaliser un jeu d'entrainement avec une variable de sortie équitablement répartie entre les valeurs TRUE et FALSE, afin de vérifier si le modèle est biaisé de par la mauvaise répartition de notre jeu initiale, ou de par un manque d'informations pertinentes pour caractériser les données avec une valeur TRUE pour la présence de tag chatting.
 
 # Expérience personnelle
+
+J'ai personnellement pris beaucoup de plaisir à travailler sur ce sujet de stage. Au cours de ces 6 mois de travail, j'ai pu y découvrir le langage R et les différents traitements statistiques dont je n'avais jamais entendu parler auparavant. Le sujet étant basé sur des données géo-localisées, j'ai découvert le monde de l'analyse et des traitements géospatiaux et des projections cartographiques, qui m'étaient jusque là totalement étrangers. Tous ces nouveaux domaines d'expertise, couplés avec l'utilisation de Git et la réalisation d'un travail open-source reproductible, m'ont appris énormément de nouvelles compétences, ce qui correspond à mon profil très polyvalent et curieux de découvrir de nouvelles méthodes et savoir-faire.
+
+
 
 \newpage
 
@@ -584,9 +600,11 @@ Les données du tableau global sont composées comme suit :
 * **noise_level** est la mesure du niveau sonore ambiant moyen sur la durée de l'enregistrement, en décibel. *Type numérique*
 * **pleasantness** est le niveau d'agréabilité subjectif du son entendu par l'utilisateur sur une échelle de 0 à 100 par incrémentation de 25. Cette note étant facultative lors de la validation d'un enregistrement, des données manquantes (NA) sont présentes. *Type numérique*
 
+## Annexe 2 - Corrélations
 
-
-
+```{r fig-corrplot, fig.cap= "Matrice de correlation", fig.pos="H", fig.align='center', echo=FALSE, out.width="90%"}
+knitr::include_graphics("plots/full_corrplot.png")
+```
 
 
 

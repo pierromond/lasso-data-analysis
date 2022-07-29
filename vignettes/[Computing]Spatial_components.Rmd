@@ -156,8 +156,7 @@ if(!exists("playground")){
 
 if(!exists("parks")){
   if(!file.exists(here::here("raw_data","parks_france.geojson"))){
-    
-    st_write(playgrounds,here::here("raw_data","parks_france.geojson"))
+    print("Please manually download file from https://cloud.univ-eiffel.fr/f/6110656 and store it in /raw_data/")
   }
   else{
   parks <- geojson_sf(here::here("raw_data","parks_france.geojson"))
