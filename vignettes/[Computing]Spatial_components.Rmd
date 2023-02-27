@@ -121,6 +121,8 @@ if(!exists("sports_fr")){
   }
 }
 
+    
+    
 if(!exists("shops_fr")){
   if(!file.exists(here::here("raw_data","osm-shop-fr.geojson"))){
     URL_shops <- "https://babel.opendatasoft.com/explore/dataset/osm-shop-fr/download/?format=geojson&timezone=Europe/Berlin&lang=fr"
@@ -199,6 +201,15 @@ if(!exists("pedestrian")){
   if(!file.exists(here::here("raw_data","pedestrian.geojson"))){
     #osm api request highway=pedestrian and area=yes in France
     #opq(...)
+    pedestrian <- data.frame(matrix(nrow = 1, ncol = 2))
+    colnames(pedestrian) <- c("pk_track","pedestrian")
+    for(i in 1:nrow(tracks_points)){
+      x <- opq_around(tracks_points[[i,"lon"]], tracks_points[[i,"lat"]], key = "highway", value = "pedestrian") %>% osmdata_sf()
+      pedestrian[i,1] <- tracks_points[i,"pk_track"]
+      pedestrian[i,2] <- ifelse(length(x$osm_polygons$geometry) != 0, TRUE, FALSE)
+      print(i) #Only to check where the calculation is at, since it's a pretty long process
+    }
+
     st_write(pedestrian,here::here("raw_data","pedestrian.geojson"))
   }
   else{

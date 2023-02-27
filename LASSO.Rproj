@@ -19,5 +19,3 @@ LineEndingConversion: Posix
 BuildType: Package
 PackageUseDevtools: Yes
 PackageInstallArgs: --no-multiarch --with-keep.source
-
-SpellingDictionary: fr_FR
