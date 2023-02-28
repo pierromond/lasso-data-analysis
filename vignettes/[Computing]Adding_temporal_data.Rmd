@@ -70,6 +70,7 @@ for(y in start_year:end_year){
     }
   }
 }
+
 #Un jour important dans nos analyses mais non considéré comme un jour férié est la "Fête de la musique" le 21 Juin
 #Cette fête est présente dans plusieurs pays, mais les dates diffèrent. En France, la date est fixe.
 for(y in start_year:end_year){

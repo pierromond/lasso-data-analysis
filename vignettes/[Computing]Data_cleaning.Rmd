@@ -40,15 +40,15 @@ password= Sys.getenv('noisecapture_password') # password stored in .Renviron. Us
 
 
 ```{r data-retrieving, include = FALSE, cache = TRUE}
-query <- "SELECT  tv.pk_track, record_utc, time_length, pleasantness, noise_level, geog FROM tracks_view as tv ;"
 
+query <- "SELECT  COUNT(*) FROM tracks_view ;"
+count <- sf::st_read(con, query = query)
+
+
+query <- "SELECT  tv.pk_track, record_utc, time_length, pleasantness, noise_level, geog FROM tracks_view as tv ;"
 filtered_track_info <- sf::st_read(con, query = query)
 
-
-query <- "SELECT np.pk_point, np.pk_track, np.the_geom, np.accuracy FROM noisecapture_point as np
-INNER JOIN tracks_view tv ON np.pk_track = tv.pk_track
-WHERE np.accuracy > 0"
-
+query <- "SELECT np.pk_point, np.pk_track, np.the_geom, np.accuracy FROM noisecapture_point as np INNER JOIN tracks_view tv ON np.pk_track = tv.pk_track WHERE np.accuracy > 0 AND np.accuracy < 25 "
 track_points <- sf::st_read(con,query = query)
 st_crs(track_points) <- 4326
 
@@ -57,58 +57,102 @@ st_crs(track_points) <- 4326
 ```{r clear-tempo-outliers, include = FALSE, cache = TRUE}
 
 coord_points <- track_points %>% dplyr::bind_cols(
-  track_points %>% st_centroid() %>% st_coordinates() %>% as_tibble() %>% dplyr::select(lon = X, lat = Y))
-
-coord_points <- coord_points %>% sf::st_drop_geometry()
+  track_points  %>% st_coordinates() 
+  %>% as_tibble() 
+  %>% dplyr::select(lon = X, lat = Y)) %>% 
+  sf::st_drop_geometry()
 
 filtered_coord_points <- base::data.frame(matrix(ncol = 3, nrow = 0))
 colnames(filtered_coord_points) <- c('pk_track', 'lon', 'lat')
 datalist = list()
 datalist_pts = list()
 n = 1
+n_pts <- 1
+n_track <-1
+
+
 #Loop to clean outliers points in tracks, does not consider tracks of 1
 for(pk in filtered_track_info$pk_track){
+
+  print(paste0(100*n/length(filtered_track_info$pk_track), " %"))
   
-  if(typeof(filtered_track_info$geog[[n]]) == "double"){
-    track <- filtered_track_info %>% dplyr::filter(pk_track == pk)
-    datalist_pts[[n]] <- track
+  track_filt <- filtered_track_info %>% dplyr::filter(pk_track == pk)
+  track <- coord_points %>% dplyr::filter(pk_track == pk)
+  
+  if (nrow(track) ==0){
+    n = n+1
+    next
+  }
+
+  
+  if(typeof(track_filt$geog) == "double"){
+    datalist_pts[[n_pts]] <- track_filt
+    n_pts=n_pts+1
     n = n+1
     next
   }
   
-  track <- coord_points %>% dplyr::filter(pk_track == pk)
+
+  
   #Filter outliers based on the median distance between points
   x <- cc_outl(track, lon = "lon", lat = "lat", species = "pk_track", method = "mad", min_occs = 2, verbose = FALSE)
+  
+  
+  
+  
   #Check if any point is still very far after the filtering, can occur if the track is solely composed of points very far from each others
   #In this case, the track is not usable and will not be kept (unit = m)
   x_coord <- x %>% select(lon,lat)
-  temp <- sapply(2:nrow(x_coord),function(i){geosphere::distm(x_coord[i-1,],x_coord[i,])})
-  if(length(temp[temp > 8]) > 0){
-    n = n+1
-    next
+  if (nrow(x_coord) > 2 ){
+    temp <- sapply(2:nrow(x_coord),function(i){geosphere::distm(x_coord[i-1,],x_coord[i,])})
+    if(length(temp[temp > 8]) > 0){
+      n = n+1
+      next
+    }
   }
+  
+  
 #  if(any(as.double(st_distance(st_as_sf(x, coords=c("lon","lat"), crs = st_crs(4326)))) > 500)){
 #    n = n+1
 #    next
 #  }
-  datalist[[n]] <- x
+  
+  datalist[[n_track]] <- x
+  n_track = n_track+1
   n = n+1
 }
 
 filtered_points = do.call(rbind, datalist_pts)
-filtered_coord_points = do.call(rbind, datalist)
+filtered_coord_points = do.call(rbind, datalist) 
+
+saveRDS(filtered_points, here::here("data","filtered_points.rds"))
+saveRDS(filtered_coord_points, here::here("data","filtered_coord_points.rds"))
 ```
 
 ```{r track-poly, include = FALSE, cache = TRUE}
 
-xys = st_as_sf(filtered_coord_points, coords=c("lon","lat"), crs = 4326)
+library(dplyr)
+library(data.table)
+xys <- st_as_sf(filtered_coord_points, coords=c("lon","lat"), crs = 4326)
+
+countPoints <- setDT(xys)[, .N, pk_track]
+res <- countPoints %>% filter(N>3)
+
+# filter second data frame to only keep "PK" values in the first data frame
+xys <- xys %>% semi_join(res, by = "pk_track")
+
+
+xys_df <- st_sf(as.data.frame(xys))
+
+
 
 xymp  = st_sf(
   aggregate(
-    xys,
-    by=list(xys$pk_track),
+    xys_df,
+    by=list(xys_df$pk_track),
     do_union=FALSE,
     FUN=function(vals){vals[1]}))
+
 
 tempo <- st_transform(xymp, 4326)
 
@@ -119,7 +163,11 @@ xypoly = st_cast(tempo, 'POLYGON')
 xypoly$area <- st_area(xypoly)
 
 clean_track_info <- filtered_track_info %>% st_drop_geometry() 
-temp <- full_join(xypoly, filtered_points %>% as.data.frame())
+if (!is.null(filtered_points)){
+  temp <- full_join(xypoly, filtered_points %>% as.data.frame())
+}else{
+   temp <- xypoly %>% as.data.frame()
+}
 
 clean_track_info <- inner_join(clean_track_info, temp %>% dplyr::select(pk_track,geometry), by = "pk_track")
 clean_track_info <- st_as_sf(clean_track_info, crs = 4326)

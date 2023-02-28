@@ -28,6 +28,9 @@ library(ggplot2)
 # handle figures and tables numbering
 library(captioner)
 
+install.packages("remotes")
+remotes::install_github("alicewchen/ltxplot")
+
 library(ltxplot)
 load_theme_ltx()
 

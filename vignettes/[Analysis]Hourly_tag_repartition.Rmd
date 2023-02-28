@@ -49,7 +49,7 @@ if(!dir.exists(here("data"))){
 
 if(!exists("all_info_tempo")){
   if(!file.exists(here("data","all_info_tempo.rds"))){
-    URL <- "https://zenodo.org/record/6536129/files/all_info_tempo.rds?download=1"
+    URL <- "https://zenodo.org/record/6563518/files/all_info_tempo.rds?download=1"
     all_info_tempo <- readRDS(url(URL))
     saveRDS(all_info_tempo,here("data","all_info_tempo.rds"))
   }
@@ -92,8 +92,7 @@ ggplot(tags_hourly_repartition %>% dplyr::filter(admin == "France")) +
     subtitle = "Noicecaptures tags in France,
     2017 - 2020"
   ) +
-  scale_x_continuous(breaks = seq(from = 0, to = 23, by = 3)) +
-  theme_latex(font = "lmroman", base_size = 16)+
+  scale_x_continuous(breaks = seq(from = 0, to = 23, by = 3)) +  theme_latex(font = "lmroman", base_size = 16)+
   facet_wrap(vars(tag_name), scales = "free_y")
 
 
@@ -114,8 +113,7 @@ ggplot(tags_hourly_repartition %>% filter(admin == "France" & tag_name == "road"
     subtitle = "Noicecaptures tags in France,
     2017 - 2020"
   ) +
-  scale_x_continuous(breaks = seq(from = 0, to = 23, by = 3)) +
-  theme_latex(font = "lmroman", base_size = 24)
+  scale_x_continuous(breaks = seq(from = 0, to = 23, by = 3)) +  theme_latex(font = "lmroman", base_size = 24)
 
 
 ```

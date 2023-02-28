@@ -95,12 +95,12 @@ From the *tracks_view* materialized view in our database, we are filtering track
 ```{r calculate-comp, child="[Computing]Calculate_components.Rmd", eval = !fast, include = FALSE}
 ```
 
-<!-- Knit child document to add weather in our dataset -->
-```{r adding-weather, child="[Computing]Adding_weather.Rmd", eval = !fast, include = FALSE}
+<!-- Knit child document to add temporal attributes in our dataset -->
+```{r adding-tempo, child="[Computing]Adding_temporal_data.Rmd", eval = !fast, include = FALSE}
 ```
 
-<!-- Knit child document to add temporal attributes in our dataset -->
-```{r adding-weather, child="[Computing]Adding_temporal_data.Rmd", eval = !fast, include = FALSE}
+<!-- Knit child document to add weather in our dataset -->
+```{r adding-weather, child="[Computing]Adding_weather.Rmd", eval = !fast, include = FALSE}
 ```
 
 <!-- Knit child document to analyse weather -->

@@ -59,6 +59,7 @@ if(!exists("france_metro")){
 
 if(!exists("clean_track_info")){
   if(!file.exists(here::here("data","clean_track_info.rds"))){
+    # TODO CHANGE URL
     URL_cltrack <- "https://github.com/nicolas-roelandt/lasso-data-analysis/raw/main/raw_data/2020_France_metro_WGS84.geojson"
     clean_track_info <- geojson_sf(URL_cltrack)
     saveRDS(clean_track_info,here::here("data","clean_track_info.rds"))
@@ -115,7 +116,7 @@ sf_use_s2(FALSE) #disable spherical geometry use
 
 full_info <- sf::st_join(clean_track_info, timezones) #intersect tracks geog with timezones geom
 
-#saveRDS(full_info, here("data","full_info.rds"))
+saveRDS(full_info, here("data","full_info.rds"))
 
 ```
 
@@ -143,7 +144,6 @@ all_info$lat <- as.numeric(all_info$lat)
 #>The dates of the beginning of seasons below are generic, the precision of the date to the hour is not necessary here.
 #>Seasons are only present between latitudes (-)23.5 and (-)66.5.
 #>The equator and the poles, not really having seasons, are noted separately, in both "season" and "hemisphere" columns.
-
 
 y_m <- format(all_info$record_utc, format ="%m-%d")
 all_info$ym <- y_m
@@ -249,7 +249,7 @@ sunsets <- inner_join(sunsets %>% dplyr::filter(!is.na(sunset_utc)),
 
 sun_info <- inner_join(sunrises,sunsets)
 
-#saveRDS(sun_info, here("data","sun_info.rds"))
+saveRDS(sun_info, here("data","sun_info.rds"))
 ```
 
 ```{r time-after-sunrise, include = FALSE}

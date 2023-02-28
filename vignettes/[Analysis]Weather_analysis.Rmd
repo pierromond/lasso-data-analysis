@@ -60,7 +60,7 @@ if(!exists("meteo_france")){
 ```
 
 ```{r analyse-meteo, include = FALSE}
-
+meteo_france<-all_info_tempo
 meteo_france_clean_rain <- meteo_france %>% drop_na(rain_mm)
 meteo_france_clean_wind <- meteo_france %>% drop_na(wind)
 
@@ -68,8 +68,7 @@ meteo_france_clean_wind <- meteo_france %>% drop_na(wind)
 #> Without any documentation regarding this value, we will consider it as 0
 #> We create groups of rainfall of approximately equivalent data amount based on quantiles for rain
 
-brks = 
-  c(min(meteo_france_clean_rain$rain_mm),0,0.2,0.4,0.6,1.4,2,7,max(meteo_france_clean_rain$rain_mm))
+brks <-  c(min(meteo_france_clean_rain$rain_mm),0,0.2,0.4,0.6,1.4,2,7,max(meteo_france_clean_rain$rain_mm))
 meteo_france_clean_rain$groups_rain <- cut(meteo_france_clean_rain$rain_mm, 
                       breaks = brks,
                       include.lowest = TRUE, labels = FALSE)
@@ -138,8 +137,7 @@ ggplot() +
     y = "Proportion of tracks with rain tag (%)",
     title = "Repartition of tracks with rain tags by rainfall",
     subtitle = "Noisecapture's tags in France,
-      2017-2020") +
-  theme_latex(font = "lmroman", base_size = 22)
+      2017-2020") #+  theme_latex(font = "lmroman", base_size = 22)
 
 ```
 
@@ -152,8 +150,7 @@ ggplot() +
     y = "Proportion of tracks with wind tag (%)",
     title = "Repartition of tracks with wind tags by wind force",
     subtitle = "Noisecapture's tags in France,
-      2017-2020") +
-  theme_latex(font = "lmroman", base_size = 22)
+      2017-2020") #+  theme_latex(font = "lmroman", base_size = 22)
 
 ```
 
@@ -173,4 +170,8 @@ For the rain data, `r round(rain,2)`% of rains are being tagged as rain.
 The quantile (10% increments) of measured rainfall (mm/h) not tagged as "rain" by users is as follows :    
 `r attributes(quant_rain)$names`    
 `r quant_rain`    
+
+
+
+
 
